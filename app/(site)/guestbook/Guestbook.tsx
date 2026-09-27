@@ -33,13 +33,37 @@ interface Entry {
   replies?: Reply[]
 }
 
-/** Small crown badge marking an allowlisted admin (site owner). */
+/** Small crown badge marking an allowlisted admin (site owner).
+ *  Gradient gold pill with a gently looping shimmer + a bobbing crown. */
 const AdminBadge = () => (
   <span
     title="Site admin"
-    className="inline-flex items-center gap-1 rounded-full bg-c-yellow/25 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[#8a6d1f] dark:text-c-yellow"
+    className="admin-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white"
   >
-    <Crown size={11} className="fill-current" /> Admin
+    <Crown size={11} className="admin-badge__crown fill-current" /> Admin
+    <style jsx>{`
+      .admin-badge {
+        background: linear-gradient(110deg, #b8860b 0%, #f5c542 35%, #fff3b0 50%, #f5c542 65%, #b8860b 100%);
+        background-size: 220% 100%;
+        box-shadow: 0 1px 6px rgba(212, 175, 55, 0.45);
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+        animation: admin-shimmer 3s linear infinite;
+      }
+      .admin-badge__crown {
+        animation: admin-bob 1.8s ease-in-out infinite;
+      }
+      @keyframes admin-shimmer {
+        0% { background-position: 100% 0; }
+        100% { background-position: -120% 0; }
+      }
+      @keyframes admin-bob {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-1.5px) rotate(-6deg); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .admin-badge, .admin-badge__crown { animation: none; }
+      }
+    `}</style>
   </span>
 )
 
@@ -809,7 +833,6 @@ const Guestbook = ({ providers }: GuestbookProps) => {
                         {entry.replies.length > 1 && (
                           <button
                             onClick={() => toggleExpand(entry._id)}
-                            data-click-sound
                             className="text-xs font-medium text-link transition-opacity hover:opacity-80"
                           >
                             {expandedReplies.has(entry._id)
