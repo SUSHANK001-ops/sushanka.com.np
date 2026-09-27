@@ -4,8 +4,18 @@ import Image from 'next/image'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import {
   Loader2, Send, Github, LogOut, ImagePlus, X,
-  Pencil, Trash2, Check,
+  Pencil, Trash2, Check, Heart, MessageCircle, Crown,
 } from 'lucide-react'
+
+interface Reply {
+  _id: string
+  userId?: string
+  name: string
+  avatar?: string
+  message: string
+  isAdmin?: boolean
+  createdAt?: string
+}
 
 interface Entry {
   _id: string
@@ -14,10 +24,24 @@ interface Entry {
   avatar?: string
   provider?: string
   userId?: string
+  isAdmin?: boolean
   image?: string
   createdAt: string
   updatedAt?: string
+  likeCount?: number
+  likedByMe?: boolean
+  replies?: Reply[]
 }
+
+/** Small crown badge marking an allowlisted admin (site owner). */
+const AdminBadge = () => (
+  <span
+    title="Site admin"
+    className="inline-flex items-center gap-1 rounded-full bg-c-yellow/25 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[#8a6d1f] dark:text-c-yellow"
+  >
+    <Crown size={11} className="fill-current" /> Admin
+  </span>
+)
 
 /** Relative "X days ago" formatting. */
 function timeAgo(iso: string): string {
