@@ -155,7 +155,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   const [message, setMessage] = useState('')
   const [website, setWebsite] = useState('') // honeypot
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
   const [showLimit, setShowLimit] = useState(false)
 
   // Compose image
@@ -182,10 +181,13 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
     fetch('/api/guestbook')
       .then((r) => r.json())
       .then((d) => setEntries(d.entries ?? []))
-      .catch(() => setError('Could not load messages.'))
+      .catch(() => toast('Could not load messages.', 'error'))
       .finally(() => setLoading(false))
   }
 
+  // Load once on mount. `load` is stable enough for this; disable the lint rule
+  // rather than re-running on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [])
 
   /** Upload a file to the guestbook uploader, returns url + publicId. */
@@ -201,7 +203,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setError('')
     setUploading(true)
     try {
       const uploaded = await uploadFile(file)
@@ -210,7 +211,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
         setImagePublicId(uploaded.publicId ?? '')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed.')
+      toast(err instanceof Error ? err.message : 'Upload failed.', 'error')
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -219,7 +220,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     if (!requireSignIn('leave a message')) return
     if (!message.trim()) {
       toast('Write a message first.', 'error')
@@ -264,7 +264,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
     setEditingId(entry._id)
     setEditMessage(entry.message)
     setEditImage(entry.image ?? '')
-    setError('')
   }
   const cancelEdit = () => {
     setEditingId(null)
@@ -279,7 +278,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
       const uploaded = await uploadFile(file)
       if (uploaded) setEditImage(uploaded.url)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed.')
+      toast(err instanceof Error ? err.message : 'Upload failed.', 'error')
     } finally {
       setUploading(false)
       if (editFileRef.current) editFileRef.current.value = ''
@@ -388,7 +387,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
     if (!requireSignIn('reply')) return
     setReplyingId(id)
     setReplyText('')
-    setError('')
   }
   const cancelReply = () => {
     setReplyingId(null)
@@ -413,32 +411,41 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
       // Auto-expand so the author sees their new reply immediately.
       setExpandedReplies((prev) => new Set(prev).add(id))
       cancelReply()
+      toast('Reply posted.', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reply.')
+      toast(err instanceof Error ? err.message : 'Failed to reply.', 'error')
     } finally {
       setPostingReply(false)
     }
   }
-  const deleteReply = async (entryId: string, replyId: string) => {
-    if (!confirm('Delete this reply?')) return
-    try {
-      const res = await fetch(`/api/guestbook/${entryId}/reply`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replyId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to delete reply.')
-      setEntries((prev) =>
-        prev.map((e) =>
-          e._id === entryId
-            ? { ...e, replies: (e.replies ?? []).filter((r) => r._id !== replyId) }
-            : e
-        )
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete reply.')
-    }
+  const deleteReply = (entryId: string, replyId: string) => {
+    setConfirmState({
+      title: 'Delete this reply?',
+      body: 'This reply will be permanently removed.',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setConfirmState(null)
+        try {
+          const res = await fetch(`/api/guestbook/${entryId}/reply`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId }),
+          })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error || 'Failed to delete reply.')
+          setEntries((prev) =>
+            prev.map((e) =>
+              e._id === entryId
+                ? { ...e, replies: (e.replies ?? []).filter((r) => r._id !== replyId) }
+                : e
+            )
+          )
+          toast('Reply deleted.', 'success')
+        } catch (err) {
+          toast(err instanceof Error ? err.message : 'Failed to delete reply.', 'error')
+        }
+      },
+    })
   }
   const toggleExpand = (id: string) => {
     setExpandedReplies((prev) => {
@@ -452,6 +459,27 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   return (
     <div className="pb-16">
       {showLimit && <LimitPopup onClose={() => setShowLimit(false)} />}
+
+      <ConfirmModal
+        open={!!confirmState}
+        title={confirmState?.title ?? ''}
+        body={confirmState?.body}
+        confirmLabel={confirmState?.confirmLabel}
+        destructive
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
+      />
+
+      <SignInPopup
+        open={!!signInAction}
+        action={signInAction ?? undefined}
+        providers={{ github: showGithub, google: showGoogle }}
+        onClose={() => setSignInAction(null)}
+        onSignIn={(p) => {
+          setSignInAction(null)
+          signIn(p)
+        }}
+      />
 
       {/* Compose / auth area */}
       {status === 'loading' ? (
@@ -570,7 +598,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                 className="hidden"
               />
             </div>
-            {error && <p className="text-xs text-c-red">{error}</p>}
           </div>
         </form>
       ) : (
@@ -819,7 +846,14 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                         ).map((reply) => {
                           const myReply = !!myId && reply.userId === myId
                           return (
-                            <div key={reply._id} className="group/reply">
+                            <div
+                              key={reply._id}
+                              className={`group/reply ${
+                                reply.isAdmin
+                                  ? 'rounded-xl border border-c-yellow/40 bg-c-yellow/[0.07] p-3'
+                                  : ''
+                              }`}
+                            >
                               <div className="flex items-center gap-2">
                                 {reply.avatar && (
                                   <Image
@@ -834,6 +868,11 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                                   {reply.name}
                                 </span>
                                 {reply.isAdmin && <AdminBadge />}
+                                {reply.isAdmin && (
+                                  <span className="rounded-full bg-c-yellow/20 px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-wide text-[#8a6d1f] dark:text-c-yellow">
+                                    Author reply
+                                  </span>
+                                )}
                                 {reply.createdAt && (
                                   <span className="font-mono text-[0.65rem] text-muted">
                                     {timeAgo(reply.createdAt)}
@@ -849,7 +888,11 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                                   </button>
                                 )}
                               </div>
-                              <p className="mt-1 text-sm leading-relaxed text-foreground/75">
+                              <p
+                                className={`mt-1 text-sm leading-relaxed ${
+                                  reply.isAdmin ? 'text-foreground/90' : 'text-foreground/75'
+                                }`}
+                              >
                                 {reply.message}
                               </p>
                             </div>
@@ -880,5 +923,12 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
     </div>
   )
 }
+
+/** Public wrapper — provides the toast context around the guestbook. */
+const Guestbook = (props: GuestbookProps) => (
+  <ToastProvider>
+    <GuestbookInner {...props} />
+  </ToastProvider>
+)
 
 export default Guestbook
