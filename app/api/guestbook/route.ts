@@ -39,9 +39,31 @@ export async function GET() {
 
     // Shape the response: hide raw like lists / hidden replies, expose derived
     // fields the client needs (likeCount, likedByMe, visible replies only).
+    //
+    // `isAdmin` is computed at read-time from the stored userId (which is the
+    // lowercased email). This is authoritative and also fixes older entries /
+    // replies that were created before the isAdmin flag existed.
     const shaped = (entries as any[]).map((e) => {
       const likes: string[] = Array.isArray(e.likes) ? e.likes : []
       const replies: any[] = Array.isArray(e.replies) ? e.replies : []
+
+      const shapedReplies = replies
+        .filter((r) => !r.isHidden)
+        .map((r) => ({
+          _id: r._id,
+          userId: r.userId,
+          name: r.name,
+          avatar: r.avatar,
+          message: r.message,
+          isAdmin: isAdminEmail(r.userId) || Boolean(r.isAdmin),
+          createdAt: r.createdAt,
+        }))
+        // Admin replies float to the top; otherwise oldest-first.
+        .sort((a, b) => {
+          if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1
+          return new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
+        })
+
       return {
         _id: e._id,
         name: e.name,
@@ -49,23 +71,13 @@ export async function GET() {
         avatar: e.avatar,
         provider: e.provider,
         userId: e.userId,
-        isAdmin: Boolean(e.isAdmin),
+        isAdmin: isAdminEmail(e.userId) || Boolean(e.isAdmin),
         image: e.image,
         createdAt: e.createdAt,
         updatedAt: e.updatedAt,
         likeCount: likes.length,
         likedByMe: viewer ? likes.includes(viewer) : false,
-        replies: replies
-          .filter((r) => !r.isHidden)
-          .map((r) => ({
-            _id: r._id,
-            userId: r.userId,
-            name: r.name,
-            avatar: r.avatar,
-            message: r.message,
-            isAdmin: Boolean(r.isAdmin),
-            createdAt: r.createdAt,
-          })),
+        replies: shapedReplies,
       }
     })
 
