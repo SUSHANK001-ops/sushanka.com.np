@@ -6,6 +6,7 @@ import {
   Loader2, Send, Github, LogOut, ImagePlus, X,
   Pencil, Trash2, Check, Heart, MessageCircle, Crown,
 } from 'lucide-react'
+import { ToastProvider, useToast, ConfirmModal, SignInPopup } from './ui'
 
 interface Reply {
   _id: string
@@ -126,12 +127,28 @@ interface GuestbookProps {
   providers?: { github?: boolean; google?: boolean }
 }
 
-const Guestbook = ({ providers }: GuestbookProps) => {
+const GuestbookInner = ({ providers }: GuestbookProps) => {
   // Default to showing both if the prop isn't supplied (backwards compatible).
   const showGithub = providers?.github ?? true
   const showGoogle = providers?.google ?? true
   const { data: session, status } = useSession()
   const myId = session?.user?.id ?? session?.user?.email ?? undefined
+  const { toast } = useToast()
+
+  // Confirm modal + sign-in popup state
+  const [confirmState, setConfirmState] = useState<{
+    title: string
+    body?: string
+    confirmLabel?: string
+    onConfirm: () => void
+  } | null>(null)
+  const [signInAction, setSignInAction] = useState<string | null>(null)
+
+  const requireSignIn = (action: string): boolean => {
+    if (session?.user) return true
+    setSignInAction(action)
+    return false
+  }
 
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
@@ -203,8 +220,9 @@ const Guestbook = ({ providers }: GuestbookProps) => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (!requireSignIn('leave a message')) return
     if (!message.trim()) {
-      setError('Write a message first.')
+      toast('Write a message first.', 'error')
       return
     }
     setSubmitting(true)
@@ -233,8 +251,9 @@ const Guestbook = ({ providers }: GuestbookProps) => {
       setMessage('')
       setImageUrl('')
       setImagePublicId('')
+      toast('Thanks for signing the guestbook!', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to post message.')
+      toast(err instanceof Error ? err.message : 'Failed to post message.', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -289,30 +308,36 @@ const Guestbook = ({ providers }: GuestbookProps) => {
       if (!res.ok) throw new Error(data.error || 'Failed to update.')
       setEntries((prev) => prev.map((e) => (e._id === id ? { ...e, ...data.entry } : e)))
       cancelEdit()
+      toast('Message updated.', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update.')
+      toast(err instanceof Error ? err.message : 'Failed to update.', 'error')
     } finally {
       setSavingEdit(false)
     }
   }
-  const remove = async (id: string) => {
-    if (!confirm('Delete this message?')) return
-    try {
-      const res = await fetch(`/api/guestbook/${id}`, { method: 'DELETE' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to delete.')
-      setEntries((prev) => prev.filter((e) => e._id !== id))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete.')
-    }
+  const remove = (id: string) => {
+    setConfirmState({
+      title: 'Delete this message?',
+      body: 'This will permanently remove your message from the guestbook.',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setConfirmState(null)
+        try {
+          const res = await fetch(`/api/guestbook/${id}`, { method: 'DELETE' })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error || 'Failed to delete.')
+          setEntries((prev) => prev.filter((e) => e._id !== id))
+          toast('Message deleted.', 'success')
+        } catch (err) {
+          toast(err instanceof Error ? err.message : 'Failed to delete.', 'error')
+        }
+      },
+    })
   }
 
   // ── Likes ──────────────────────────────────────────────────────────────
   const toggleLike = async (id: string) => {
-    if (!session?.user) {
-      setError('Sign in to like messages.')
-      return
-    }
+    if (!requireSignIn('like this message')) return
     if (likeBusy) return
     setLikeBusy(id)
 
@@ -352,7 +377,7 @@ const Guestbook = ({ providers }: GuestbookProps) => {
           }
         })
       )
-      setError(err instanceof Error ? err.message : 'Failed to like.')
+      toast(err instanceof Error ? err.message : 'Failed to like.', 'error')
     } finally {
       setLikeBusy(null)
     }
@@ -360,6 +385,7 @@ const Guestbook = ({ providers }: GuestbookProps) => {
 
   // ── Replies ────────────────────────────────────────────────────────────
   const beginReply = (id: string) => {
+    if (!requireSignIn('reply')) return
     setReplyingId(id)
     setReplyText('')
     setError('')
