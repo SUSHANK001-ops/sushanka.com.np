@@ -44,6 +44,10 @@ export function isAdminEmail(email?: string | null): boolean {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
+  // Running behind a reverse proxy (sushanka.com.np). trustHost lets Auth.js
+  // trust the forwarded host/proto so it builds the correct redirect_uri for
+  // the token exchange — a mismatch here is a common cause of `invalid_grant`.
+  trustHost: true,
   session: { strategy: 'jwt' },
   // Stateless JWT sessions — no DB adapter needed for simple identity.
   callbacks: {
