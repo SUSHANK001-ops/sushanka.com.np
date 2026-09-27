@@ -3,15 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import GuestbookModel from '@/model/guestbookModel'
 import { auth } from '@/auth'
+import { userKey } from '@/lib/userKey'
 
 export const dynamic = 'force-dynamic'
 
 function sanitize(value: string) {
   return value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()
-}
-
-function userKey(session: { user?: { id?: string; email?: string | null } } | null) {
-  return session?.user?.id ?? session?.user?.email ?? undefined
 }
 
 /** PATCH — edit one's own message (and/or its image). Owner only. */

@@ -3,6 +3,7 @@ import connectDB from '@/lib/db'
 import GuestbookModel from '@/model/guestbookModel'
 import { getClientIp, rateLimit } from '@/lib/rateLimit'
 import { auth, isAdminEmail } from '@/auth'
+import { userKey } from '@/lib/userKey'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,10 +12,6 @@ const REPLY_WINDOW = 60 * 60 // 1 hour
 
 function sanitize(value: string) {
   return value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()
-}
-
-function userKey(session: { user?: { id?: string; email?: string | null } } | null) {
-  return session?.user?.id ?? session?.user?.email ?? undefined
 }
 
 /** POST — add a text reply to an entry. Requires an authenticated session. */

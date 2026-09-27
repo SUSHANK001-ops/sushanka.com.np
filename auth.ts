@@ -61,10 +61,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub
-      }
       if (session.user) {
+        // Use the verified email as the stable identity key. token.sub is NOT
+        // stable across logout/login with JWT sessions and no DB adapter, which
+        // previously let the same person like/act as a "new" user each login.
+        // The email is consistent for the same account across sessions.
+        session.user.id = (token.email ?? session.user.email ?? token.sub ?? '')
+          .toString()
+          .toLowerCase()
         session.user.isAdmin = Boolean(token.isAdmin)
       }
       return session

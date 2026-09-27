@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import GuestbookModel from '@/model/guestbookModel'
 import { auth } from '@/auth'
+import { userKey } from '@/lib/userKey'
 
 export const dynamic = 'force-dynamic'
-
-function userKey(session: { user?: { id?: string; email?: string | null } } | null) {
-  return session?.user?.id ?? session?.user?.email ?? undefined
-}
 
 /** POST — toggle the viewer's like on an entry. Click again to unlike. */
 export async function POST(
