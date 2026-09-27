@@ -7,7 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    const { email, password } = await req.json();
+    const body = await req.json();
+
+    // Coerce to primitives so a JSON object like {"$gt":""} can't be injected
+    // into the Mongo query (NoSQL operator injection).
+    const email = String(body?.email ?? "").trim().toLowerCase();
+    const password = String(body?.password ?? "");
 
     if (!email || !password) {
       return NextResponse.json(
@@ -38,11 +43,13 @@ export async function POST(req: NextRequest) {
       username: admin.username,
     });
 
+    // Note: the token is set as an httpOnly cookie only — it is intentionally
+    // NOT returned in the body so it can't be placed in localStorage (which
+    // would expose it to XSS exfiltration).
     const response = NextResponse.json(
       {
         message: "Login successful",
         admin: { id: admin._id, username: admin.username, email: admin.email },
-        token,
       },
       { status: 200 }
     );

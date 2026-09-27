@@ -17,7 +17,7 @@ export async function GET() {
     const entries = await GuestbookModel.find({})
       .sort({ createdAt: -1 })
       .limit(500)
-      .select('name message avatar provider userId image isHidden createdAt updatedAt')
+      .select('name message avatar provider userId isAdmin image isHidden likes replies createdAt updatedAt')
       .lean()
 
     return NextResponse.json({ entries })

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import GuestbookModel from '@/model/guestbookModel'
 import { getClientIp, rateLimit } from '@/lib/rateLimit'
-import { auth } from '@/auth'
+import { auth, isAdminEmail } from '@/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,18 +23,55 @@ function userKey(session: { user?: { id?: string; email?: string | null } } | nu
   return session?.user?.id ?? session?.user?.email ?? undefined
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /** GET — newest messages first. Includes userId so the client can show
- *  edit/delete controls on the viewer's own entries. */
+ *  edit/delete controls on the viewer's own entries, plus like/reply data. */
 export async function GET() {
   try {
+    const session = await auth()
+    const viewer = userKey(session)
+
     await connectDB()
     const entries = await GuestbookModel.find({ isHidden: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(200)
-      .select('name message avatar provider userId image createdAt updatedAt')
+      .select('name message avatar provider userId isAdmin image likes replies createdAt updatedAt')
       .lean()
 
-    return NextResponse.json({ entries })
+    // Shape the response: hide raw like lists / hidden replies, expose derived
+    // fields the client needs (likeCount, likedByMe, visible replies only).
+    const shaped = (entries as any[]).map((e) => {
+      const likes: string[] = Array.isArray(e.likes) ? e.likes : []
+      const replies: any[] = Array.isArray(e.replies) ? e.replies : []
+      return {
+        _id: e._id,
+        name: e.name,
+        message: e.message,
+        avatar: e.avatar,
+        provider: e.provider,
+        userId: e.userId,
+        isAdmin: Boolean(e.isAdmin),
+        image: e.image,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+        likeCount: likes.length,
+        likedByMe: viewer ? likes.includes(viewer) : false,
+        replies: replies
+          .filter((r) => !r.isHidden)
+          .map((r) => ({
+            _id: r._id,
+            userId: r.userId,
+            name: r.name,
+            avatar: r.avatar,
+            message: r.message,
+            isAdmin: Boolean(r.isAdmin),
+            createdAt: r.createdAt,
+          })),
+      }
+    })
+
+    return NextResponse.json({ entries: shaped })
   } catch (error) {
     console.error('Guestbook GET error:', error)
     return NextResponse.json({ error: 'Failed to load messages.' }, { status: 500 })
@@ -111,12 +148,14 @@ export async function POST(req: NextRequest) {
     // Identity comes from the verified session, never from the client.
     const name = sanitize(session.user.name ?? 'Anonymous').slice(0, 60) || 'Anonymous'
     const avatar = session.user.image ?? undefined
+    const admin = isAdminEmail(session.user.email)
 
     const entry = await GuestbookModel.create({
       name,
       message,
       avatar,
       userId: uid,
+      isAdmin: admin,
       image,
       imagePublicId,
     })
@@ -129,8 +168,12 @@ export async function POST(req: NextRequest) {
         message: entry.message,
         avatar: entry.avatar,
         userId: entry.userId,
+        isAdmin: Boolean(entry.isAdmin),
         image: entry.image,
         createdAt: entry.createdAt,
+        likeCount: 0,
+        likedByMe: false,
+        replies: [],
       },
     })
   } catch (error) {

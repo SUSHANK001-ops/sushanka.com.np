@@ -1,6 +1,7 @@
 import connectDB from "@/lib/db";
 import BlogModel from "@/model/blogModel";
 import { requireAdminSession } from "@/lib/adminAuth";
+import { sanitizeBlogHtml } from "@/lib/sanitizeBlog";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET all blogs (admin - includes all data)
@@ -63,7 +64,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingPost = await BlogModel.findOne({ slug });
+    const cleanSlug = String(slug).trim();
+    const existingPost = await BlogModel.findOne({ slug: cleanSlug });
     if (existingPost) {
       return NextResponse.json(
         { error: "A post with this slug already exists" },
@@ -73,10 +75,10 @@ export async function POST(req: NextRequest) {
 
     const parsedTags = Array.isArray(tags)
       ? tags
-      : tags.split(",").map((t: string) => t.trim()).filter(Boolean);
+      : String(tags).split(",").map((t: string) => t.trim()).filter(Boolean);
 
     const blog = await BlogModel.create({
-      slug,
+      slug: cleanSlug,
       title,
       timeToRead,
       Titledescription,
@@ -84,7 +86,7 @@ export async function POST(req: NextRequest) {
       tags: parsedTags,
       category,
       author,
-      content,
+      content: sanitizeBlogHtml(String(content)),
       published: published !== false, // default to published unless explicitly false
       dateposted: new Date(),
     });

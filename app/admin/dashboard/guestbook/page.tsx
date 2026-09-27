@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Trash2, Loader2, RefreshCw, Heart, Crown, MessageCircle } from "lucide-react";
+
+interface Reply {
+  _id: string;
+  userId?: string;
+  name: string;
+  avatar?: string;
+  message: string;
+  isAdmin?: boolean;
+  isHidden?: boolean;
+  createdAt?: string;
+}
 
 interface Entry {
   _id: string;
@@ -10,7 +21,10 @@ interface Entry {
   avatar?: string;
   image?: string;
   userId?: string;
+  isAdmin?: boolean;
   isHidden?: boolean;
+  likes?: string[];
+  replies?: Reply[];
   createdAt: string;
 }
 
@@ -66,13 +80,67 @@ export default function AdminGuestbookPage() {
     }
   };
 
+  const toggleReplyHide = async (entryId: string, reply: Reply) => {
+    setBusyId(reply._id);
+    try {
+      const res = await fetch(`/api/admin/guestbook/${entryId}/reply`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replyId: reply._id, isHidden: !reply.isHidden }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed.");
+      setEntries((prev) =>
+        prev.map((e) =>
+          e._id === entryId
+            ? {
+                ...e,
+                replies: (e.replies ?? []).map((r) =>
+                  r._id === reply._id ? { ...r, isHidden: data.isHidden } : r
+                ),
+              }
+            : e
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const removeReply = async (entryId: string, reply: Reply) => {
+    if (!confirm(`Delete ${reply.name}'s reply permanently?`)) return;
+    setBusyId(reply._id);
+    try {
+      const res = await fetch(`/api/admin/guestbook/${entryId}/reply`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replyId: reply._id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed.");
+      setEntries((prev) =>
+        prev.map((e) =>
+          e._id === entryId
+            ? { ...e, replies: (e.replies ?? []).filter((r) => r._id !== reply._id) }
+            : e
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Guestbook Moderation</h1>
           <p className="mt-1 text-sm text-white/40">
-            Hide or delete any visitor message. Deleting also removes its photo.
+            Hide or delete any visitor message or reply. Deleting a message also removes its photo.
           </p>
         </div>
         <button
@@ -108,7 +176,7 @@ export default function AdminGuestbookPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {entry.avatar && (
                       <img
@@ -118,6 +186,11 @@ export default function AdminGuestbookPage() {
                       />
                     )}
                     <span className="text-sm font-semibold text-white">{entry.name}</span>
+                    {entry.isAdmin && (
+                      <span className="inline-flex items-center gap-1 rounded bg-yellow-400/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-yellow-400">
+                        <Crown size={11} className="fill-current" /> Admin
+                      </span>
+                    )}
                     {entry.isHidden && (
                       <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/50">
                         Hidden
@@ -126,6 +199,11 @@ export default function AdminGuestbookPage() {
                     <span className="text-xs text-white/30">
                       {new Date(entry.createdAt).toLocaleDateString()}
                     </span>
+                    {(entry.likes?.length ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs text-white/40">
+                        <Heart size={12} /> {entry.likes!.length}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-2 text-sm text-white/70">{entry.message}</p>
                   {entry.image && (
@@ -135,6 +213,67 @@ export default function AdminGuestbookPage() {
                       alt="attachment"
                       className="mt-3 h-24 w-auto rounded-lg border border-white/10 object-cover"
                     />
+                  )}
+
+                  {/* Replies */}
+                  {entry.replies && entry.replies.length > 0 && (
+                    <div className="mt-4 space-y-2 border-l-2 border-white/10 pl-3">
+                      <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-white/30">
+                        <MessageCircle size={12} /> {entry.replies.length}{" "}
+                        {entry.replies.length === 1 ? "reply" : "replies"}
+                      </p>
+                      {entry.replies.map((reply) => (
+                        <div
+                          key={reply._id}
+                          className={`flex items-start justify-between gap-3 rounded-lg px-2 py-1.5 ${
+                            reply.isHidden ? "opacity-50" : ""
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-semibold text-white/90">
+                                {reply.name}
+                              </span>
+                              {reply.isAdmin && (
+                                <span className="inline-flex items-center gap-1 rounded bg-yellow-400/20 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-yellow-400">
+                                  <Crown size={9} className="fill-current" /> Admin
+                                </span>
+                              )}
+                              {reply.isHidden && (
+                                <span className="rounded bg-white/10 px-1 py-0.5 text-[9px] uppercase tracking-wide text-white/50">
+                                  Hidden
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-xs text-white/60">{reply.message}</p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <button
+                              onClick={() => toggleReplyHide(entry._id, reply)}
+                              disabled={busyId === reply._id}
+                              title={reply.isHidden ? "Show reply" : "Hide reply"}
+                              className="grid h-6 w-6 place-items-center rounded border border-white/10 text-white/50 transition-colors hover:text-white disabled:opacity-50"
+                            >
+                              {busyId === reply._id ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : reply.isHidden ? (
+                                <Eye size={12} />
+                              ) : (
+                                <EyeOff size={12} />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => removeReply(entry._id, reply)}
+                              disabled={busyId === reply._id}
+                              title="Delete reply"
+                              className="grid h-6 w-6 place-items-center rounded border border-red-500/30 text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 

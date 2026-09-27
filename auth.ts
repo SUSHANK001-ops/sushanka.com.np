@@ -29,17 +29,21 @@ if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
 }
 
 /**
- * Emails granted admin access. Kept here (and mirrored in lib/adminEmails)
- * so both the session callback and API routes agree.
+ * Emails granted admin access, read from the ADMIN_EMAILS env var
+ * (comma-separated). Falls back to an empty list if unset — meaning no one is
+ * admin until the env var is configured. Kept out of source so admins can be
+ * changed per-environment without a code change or redeploy.
+ *
+ *   ADMIN_EMAILS="you@example.com,other@example.com"
  */
-export const ADMIN_EMAILS = [
-  'sushanklamichhane12@gmail.com',
-  'mail.sushanka@gmail.com',
-]
+export const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean)
 
 export function isAdminEmail(email?: string | null): boolean {
   if (!email) return false
-  return ADMIN_EMAILS.map((e) => e.toLowerCase()).includes(email.toLowerCase())
+  return ADMIN_EMAILS.includes(email.toLowerCase())
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
