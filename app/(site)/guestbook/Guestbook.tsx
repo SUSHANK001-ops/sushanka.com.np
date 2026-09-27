@@ -693,7 +693,6 @@ const Guestbook = ({ providers }: GuestbookProps) => {
                       <button
                         onClick={() => toggleLike(entry._id)}
                         disabled={likeBusy === entry._id}
-                        data-click-sound
                         aria-pressed={entry.likedByMe}
                         aria-label={entry.likedByMe ? 'Unlike' : 'Like'}
                         className={`inline-flex items-center gap-1.5 text-xs transition-colors disabled:opacity-60 ${
@@ -713,7 +712,6 @@ const Guestbook = ({ providers }: GuestbookProps) => {
                         onClick={() =>
                           replyingId === entry._id ? cancelReply() : beginReply(entry._id)
                         }
-                        data-click-sound
                         className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
                       >
                         <MessageCircle size={15} />
