@@ -43,8 +43,10 @@ export async function GET() {
         await connectDB();
         // Public endpoint: only published posts, newest first.
         // `published` may be missing on older docs — treat missing as published.
+        // Sort by createdAt (always present + a real Date) so ordering is stable;
+        // dateposted is unreliable on older docs.
         const blogs = await BlogModel.find({ published: { $ne: false } })
-            .sort({ dateposted: -1, createdAt: -1 });
+            .sort({ createdAt: -1 });
         return NextResponse.json({ blogs }, { status: 200 })
     } catch (error) {
         console.error("Error fetching blog posts:", error)
