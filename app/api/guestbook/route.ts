@@ -4,6 +4,7 @@ import connectDB from '@/lib/db'
 import GuestbookModel from '@/model/guestbookModel'
 import { getClientIp, rateLimit } from '@/lib/rateLimit'
 import { auth, isAdminEmail } from '@/auth'
+import { userKey } from '@/lib/userKey'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +19,7 @@ function sanitize(value: string) {
   return value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()
 }
 
-/** Stable identity key for the signed-in user. */
-function userKey(session: { user?: { id?: string; email?: string | null } } | null) {
-  return session?.user?.id ?? session?.user?.email ?? undefined
-}
+
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
