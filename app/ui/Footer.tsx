@@ -42,7 +42,7 @@ const columns: FLink[][] = [
     { label: 'Instagram', href: 'https://www.instagram.com/the_sushank_lamichhane/', icon: Instagram, external: true },
     { label: 'Blog', href: identity.blogUrl, icon: Rss, external: true },
     { label: 'GitHub', href: 'https://github.com/SUSHANK001-ops', icon: Github, external: true },
-    { label: 'LinkedIn', href: 'https://www.linkedin.com/in/lamichhane--68b754341/', icon: Linkedin, external: true },
+    { label: 'LinkedIn', href: 'https://www.linkedin.com/in/sushank001-ops/', icon: Linkedin, external: true },
   ],
 ]
 
