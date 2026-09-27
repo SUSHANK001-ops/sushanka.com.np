@@ -20,8 +20,7 @@ export default auth((req) => {
     pathname.startsWith("/api/admin/") &&
     !pathname.startsWith("/api/admin/login") &&
     !pathname.startsWith("/api/admin/logout") &&
-    !pathname.startsWith("/api/admin/me") &&
-    !pathname.startsWith("/api/admin/register");
+    !pathname.startsWith("/api/admin/me");
 
   if (!isAdminPage && !isAdminApi) {
     return NextResponse.next();

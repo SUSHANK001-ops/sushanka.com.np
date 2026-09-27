@@ -1,9 +1,17 @@
 import connectDB from "@/lib/db";
 import BlogModel from "@/model/blogModel";
+import { requireAdminSession } from "@/lib/adminAuth";
+import { sanitizeBlogHtml } from "@/lib/sanitizeBlog";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
     try {
+        // Creating posts is an admin-only action.
+        const session = await requireAdminSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         await connectDB();
         const { slug, title, timeToRead, Titledescription, image, tags, category, dateposted, author, content } = await req.json();
 
@@ -11,15 +19,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "All fields are required" }, { status: 400 })
         }
 
-        const existingPost = await BlogModel.findOne({ slug });
+        const cleanSlug = String(slug).trim();
+        const existingPost = await BlogModel.findOne({ slug: cleanSlug });
         if (existingPost) {
             return NextResponse.json({ error: "A post with this title already exists. Please use a different title." }, { status: 409 })
         }
 
-        const parsedTags = Array.isArray(tags) ? tags : tags.split(",").map((t: string) => t.trim()).filter(Boolean);
+        const parsedTags = Array.isArray(tags) ? tags : String(tags).split(",").map((t: string) => t.trim()).filter(Boolean);
 
         const newBlogpost = await BlogModel.create({
-            slug,
+            slug: cleanSlug,
             title,
             timeToRead,
             Titledescription,
@@ -28,7 +37,7 @@ export async function POST(req: NextRequest) {
             category,
             dateposted: dateposted ? new Date(dateposted) : new Date(),
             author,
-            content
+            content: sanitizeBlogHtml(String(content)),
         });
 
         return NextResponse.json({ message: "Blog post created successfully", blog: newBlogpost }, { status: 201 })

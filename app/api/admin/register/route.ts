@@ -1,14 +1,16 @@
 import connectDB from "@/lib/db";
 import AdminModel from "@/model/adminModel";
+import { requireAdminSession } from "@/lib/adminAuth";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
-// Protected by middleware - only authenticated admins can register new admins
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Only an authenticated allowlisted admin (NextAuth session) may create admins.
 export async function POST(req: NextRequest) {
   try {
-    // Double-check auth via middleware headers
-    const adminId = req.headers.get("x-admin-id");
-    if (!adminId) {
+    const session = await requireAdminSession();
+    if (!session) {
       return NextResponse.json(
         { error: "Unauthorized - Only authenticated admins can register new admins" },
         { status: 401 }
@@ -16,11 +18,23 @@ export async function POST(req: NextRequest) {
     }
 
     await connectDB();
-    const { username, password, email } = await req.json();
+    const body = await req.json();
+
+    // Coerce to strings so no object/operator can be injected into the query.
+    const username = String(body?.username ?? "").trim();
+    const email = String(body?.email ?? "").trim().toLowerCase();
+    const password = String(body?.password ?? "");
 
     if (!username || !password || !email) {
       return NextResponse.json(
         { error: "Username, password and email are required" },
+        { status: 400 }
+      );
+    }
+
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email address" },
         { status: 400 }
       );
     }

@@ -1,6 +1,7 @@
 import connectDB from "@/lib/db";
 import BlogModel from "@/model/blogModel";
 import { requireAdminSession } from "@/lib/adminAuth";
+import { sanitizeBlogHtml } from "@/lib/sanitizeBlog";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET a single blog by slug

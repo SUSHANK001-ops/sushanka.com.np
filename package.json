@@ -27,6 +27,7 @@
     "@react-three/fiber": "^9.5.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/sanitize-html": "2.13.0",
     "@types/three": "^0.182.0",
     "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
@@ -46,6 +47,7 @@
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "sanitize-html": "2.14.0",
     "three": "^0.182.0",
     "use-sound": "^5.0.0"
   },
