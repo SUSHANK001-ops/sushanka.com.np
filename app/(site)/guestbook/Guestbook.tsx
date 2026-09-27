@@ -130,6 +130,13 @@ const Guestbook = ({ providers }: GuestbookProps) => {
   const [savingEdit, setSavingEdit] = useState(false)
   const editFileRef = useRef<HTMLInputElement>(null)
 
+  // Reply + like state
+  const [replyingId, setReplyingId] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [postingReply, setPostingReply] = useState(false)
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
+  const [likeBusy, setLikeBusy] = useState<string | null>(null)
+
   const load = () => {
     fetch('/api/guestbook')
       .then((r) => r.json())
@@ -274,6 +281,122 @@ const Guestbook = ({ providers }: GuestbookProps) => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete.')
     }
+  }
+
+  // ── Likes ──────────────────────────────────────────────────────────────
+  const toggleLike = async (id: string) => {
+    if (!session?.user) {
+      setError('Sign in to like messages.')
+      return
+    }
+    if (likeBusy) return
+    setLikeBusy(id)
+
+    // Optimistic toggle.
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e._id !== id) return e
+        const liked = !e.likedByMe
+        return {
+          ...e,
+          likedByMe: liked,
+          likeCount: Math.max(0, (e.likeCount ?? 0) + (liked ? 1 : -1)),
+        }
+      })
+    )
+
+    try {
+      const res = await fetch(`/api/guestbook/${id}/like`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to like.')
+      // Reconcile with the server truth.
+      setEntries((prev) =>
+        prev.map((e) =>
+          e._id === id ? { ...e, likedByMe: data.likedByMe, likeCount: data.likeCount } : e
+        )
+      )
+    } catch (err) {
+      // Revert on failure.
+      setEntries((prev) =>
+        prev.map((e) => {
+          if (e._id !== id) return e
+          const liked = !e.likedByMe
+          return {
+            ...e,
+            likedByMe: liked,
+            likeCount: Math.max(0, (e.likeCount ?? 0) + (liked ? 1 : -1)),
+          }
+        })
+      )
+      setError(err instanceof Error ? err.message : 'Failed to like.')
+    } finally {
+      setLikeBusy(null)
+    }
+  }
+
+  // ── Replies ────────────────────────────────────────────────────────────
+  const beginReply = (id: string) => {
+    setReplyingId(id)
+    setReplyText('')
+    setError('')
+  }
+  const cancelReply = () => {
+    setReplyingId(null)
+    setReplyText('')
+  }
+  const submitReply = async (id: string) => {
+    if (!replyText.trim()) return
+    setPostingReply(true)
+    try {
+      const res = await fetch(`/api/guestbook/${id}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: replyText }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to reply.')
+      setEntries((prev) =>
+        prev.map((e) =>
+          e._id === id ? { ...e, replies: [...(e.replies ?? []), data.reply] } : e
+        )
+      )
+      // Auto-expand so the author sees their new reply immediately.
+      setExpandedReplies((prev) => new Set(prev).add(id))
+      cancelReply()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reply.')
+    } finally {
+      setPostingReply(false)
+    }
+  }
+  const deleteReply = async (entryId: string, replyId: string) => {
+    if (!confirm('Delete this reply?')) return
+    try {
+      const res = await fetch(`/api/guestbook/${entryId}/reply`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replyId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to delete reply.')
+      setEntries((prev) =>
+        prev.map((e) =>
+          e._id === entryId
+            ? { ...e, replies: (e.replies ?? []).filter((r) => r._id !== replyId) }
+            : e
+        )
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete reply.')
+    }
+  }
+  const toggleExpand = (id: string) => {
+    setExpandedReplies((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   return (
@@ -458,6 +581,7 @@ const Guestbook = ({ providers }: GuestbookProps) => {
                       />
                     )}
                     <span className="font-semibold text-foreground">{entry.name}</span>
+                    {entry.isAdmin && <AdminBadge />}
                     {mine && (
                       <span className="rounded-full bg-c-green/20 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-link">
                         You
@@ -561,6 +685,142 @@ const Guestbook = ({ providers }: GuestbookProps) => {
                           height={400}
                           className="h-auto w-full max-w-sm object-cover"
                         />
+                      </div>
+                    )}
+
+                    {/* Actions: like + reply */}
+                    <div className="mt-3 flex items-center gap-4">
+                      <button
+                        onClick={() => toggleLike(entry._id)}
+                        disabled={likeBusy === entry._id}
+                        data-click-sound
+                        aria-pressed={entry.likedByMe}
+                        aria-label={entry.likedByMe ? 'Unlike' : 'Like'}
+                        className={`inline-flex items-center gap-1.5 text-xs transition-colors disabled:opacity-60 ${
+                          entry.likedByMe
+                            ? 'text-c-red'
+                            : 'text-muted hover:text-foreground'
+                        }`}
+                      >
+                        <Heart
+                          size={15}
+                          className={entry.likedByMe ? 'fill-current' : ''}
+                        />
+                        {entry.likeCount ? entry.likeCount : ''}
+                        <span className="sr-only">likes</span>
+                      </button>
+                      <button
+                        onClick={() =>
+                          replyingId === entry._id ? cancelReply() : beginReply(entry._id)
+                        }
+                        data-click-sound
+                        className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
+                      >
+                        <MessageCircle size={15} />
+                        Reply
+                      </button>
+                    </div>
+
+                    {/* Reply composer */}
+                    {replyingId === entry._id && (
+                      <div className="mt-3">
+                        {session?.user ? (
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                            <textarea
+                              rows={2}
+                              autoFocus
+                              placeholder="Write a reply…"
+                              className={`${inputClass} resize-none`}
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              maxLength={500}
+                            />
+                            <div className="flex shrink-0 items-center gap-2">
+                              <button
+                                onClick={() => submitReply(entry._id)}
+                                disabled={postingReply || !replyText.trim()}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-60"
+                              >
+                                {postingReply ? (
+                                  <Loader2 size={13} className="animate-spin" />
+                                ) : (
+                                  <Send size={13} />
+                                )}
+                                Reply
+                              </button>
+                              <button
+                                onClick={cancelReply}
+                                className="text-xs text-muted transition-colors hover:text-foreground"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted">Sign in to reply.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Replies list — show 1, then "see more" */}
+                    {entry.replies && entry.replies.length > 0 && (
+                      <div className="mt-4 space-y-3 border-l-2 border-border pl-4">
+                        {(expandedReplies.has(entry._id)
+                          ? entry.replies
+                          : entry.replies.slice(0, 1)
+                        ).map((reply) => {
+                          const myReply = !!myId && reply.userId === myId
+                          return (
+                            <div key={reply._id} className="group/reply">
+                              <div className="flex items-center gap-2">
+                                {reply.avatar && (
+                                  <Image
+                                    src={reply.avatar}
+                                    alt={reply.name}
+                                    width={18}
+                                    height={18}
+                                    className="rounded-full"
+                                  />
+                                )}
+                                <span className="text-xs font-semibold text-foreground">
+                                  {reply.name}
+                                </span>
+                                {reply.isAdmin && <AdminBadge />}
+                                {reply.createdAt && (
+                                  <span className="font-mono text-[0.65rem] text-muted">
+                                    {timeAgo(reply.createdAt)}
+                                  </span>
+                                )}
+                                {myReply && (
+                                  <button
+                                    onClick={() => deleteReply(entry._id, reply._id)}
+                                    aria-label="Delete reply"
+                                    className="ml-auto grid h-6 w-6 place-items-center rounded-full text-muted opacity-0 transition-all hover:bg-c-red/15 hover:text-c-red group-hover/reply:opacity-100"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </div>
+                              <p className="mt-1 text-sm leading-relaxed text-foreground/75">
+                                {reply.message}
+                              </p>
+                            </div>
+                          )
+                        })}
+
+                        {entry.replies.length > 1 && (
+                          <button
+                            onClick={() => toggleExpand(entry._id)}
+                            data-click-sound
+                            className="text-xs font-medium text-link transition-opacity hover:opacity-80"
+                          >
+                            {expandedReplies.has(entry._id)
+                              ? 'Show less'
+                              : `See ${entry.replies.length - 1} more ${
+                                  entry.replies.length - 1 === 1 ? 'reply' : 'replies'
+                                }`}
+                          </button>
+                        )}
                       </div>
                     )}
                   </>
