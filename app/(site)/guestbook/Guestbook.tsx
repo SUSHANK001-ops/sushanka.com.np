@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import {
   Loader2, Send, Github, LogOut, ImagePlus, X,
-  Pencil, Trash2, Check, Heart, MessageCircle, Crown,
+  Pencil, Trash2, Check, Plus, MessageCircle, Crown,
 } from 'lucide-react'
 import { ToastProvider, useToast, ConfirmModal, SignInPopup } from './ui'
 
@@ -778,31 +778,25 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                     )}
 
                     {/* Actions: like + reply */}
-                    {activeEntryId === entry._id && <div className="relative mt-3 flex items-center gap-4">
+                    {activeEntryId === entry._id && <div className="relative mt-3 ml-8 flex items-center gap-3 sm:ml-12">
                       <button
+                        type="button"
                         onClick={(event) => {
                           event.stopPropagation()
                           setReactionPickerId((current) => current === entry._id ? null : entry._id)
                         }}
-                        disabled={likeBusy === entry._id}
-                        aria-pressed={entry.likedByMe}
-                        aria-label={entry.likedByMe ? 'Unlike' : 'Like'}
-                        className={`inline-flex items-center gap-1.5 text-xs transition-colors disabled:opacity-60 ${
-                          entry.likedByMe
-                            ? 'text-c-red'
-                            : 'text-muted hover:text-foreground'
-                        }`}
+                        aria-label="Add an emoji reaction"
+                        className="inline-flex items-center gap-1 text-xs text-muted transition-colors hover:text-foreground"
                       >
-                        <span className="text-base">{entry.reactionByMe ?? '♡'}</span>
-                        {entry.likeCount ? entry.likeCount : ''}
-                        <span className="sr-only">likes</span>
+                        <Plus size={15} />
+                        <span className="sr-only">Add reaction</span>
                       </button>
                       {reactionPickerId === entry._id && (
                         <div
                           className="absolute bottom-7 left-0 z-10 flex max-w-[calc(100vw-3rem)] flex-wrap items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {['❤️', '🔥', '👏', '😂', '😍', '🎉', '💯'].map((emoji) => (
+                          {['❤️', '🥰', '😂', '😮', '😢', '😡', '🔥', '👏'].map((emoji) => (
                             <button
                               key={emoji}
                               type="button"
@@ -816,22 +810,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                               {emoji}
                             </button>
                           ))}
-                          <input
-                            type="text"
-                            inputMode="text"
-                            maxLength={8}
-                            placeholder="😊"
-                            aria-label="Type an emoji reaction"
-                            className="h-7 w-8 border-0 bg-transparent p-0 text-center text-sm outline-none placeholder:text-muted"
-                            onKeyDown={(event) => {
-                              if (event.key !== 'Enter') return
-                              event.preventDefault()
-                              const value = event.currentTarget.value.trim()
-                              if (!value) return
-                              void toggleLike(entry._id, value)
-                              setReactionPickerId(null)
-                            }}
-                          />
                         </div>
                       )}
                       {entry.reactions?.map((reaction) => (

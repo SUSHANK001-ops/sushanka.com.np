@@ -6,7 +6,7 @@ import { userKey } from '@/lib/userKey'
 
 export const dynamic = 'force-dynamic'
 
-const presetEmojis = ['❤️', '🔥', '👏', '😂', '😍', '🎉', '💯']
+const presetEmojis = ['❤️', '🥰', '😂', '😮', '😢', '😡', '🔥', '👏']
 
 /** POST — add, change, or remove the viewer's emoji reaction. */
 export async function POST(
@@ -26,10 +26,7 @@ export async function POST(
     const { id } = await params
     const body = await req.json().catch(() => ({}))
     const requestedEmoji = typeof body?.emoji === 'string' ? body.emoji.trim() : ''
-    const emoji = requestedEmoji.length > 0 && requestedEmoji.length <= 8 &&
-      !/[\u0000-\u001f\u007f]/.test(requestedEmoji)
-      ? requestedEmoji
-      : '❤️'
+    const emoji = presetEmojis.includes(requestedEmoji) ? requestedEmoji : '❤️'
     await connectDB()
 
     const entry = await GuestbookModel.findById(id).select('likes likeProfiles reactions')
