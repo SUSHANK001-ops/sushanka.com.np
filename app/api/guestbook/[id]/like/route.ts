@@ -6,7 +6,7 @@ import { userKey } from '@/lib/userKey'
 
 export const dynamic = 'force-dynamic'
 
-const allowedEmojis = ['❤️', '🔥', '👏', '😂', '😍', '🎉', '💯']
+const presetEmojis = ['❤️', '🔥', '👏', '😂', '😍', '🎉', '💯']
 
 /** POST — add, change, or remove the viewer's emoji reaction. */
 export async function POST(
@@ -25,8 +25,10 @@ export async function POST(
 
     const { id } = await params
     const body = await req.json().catch(() => ({}))
-    const emoji = typeof body?.emoji === 'string' && allowedEmojis.includes(body.emoji)
-      ? body.emoji
+    const requestedEmoji = typeof body?.emoji === 'string' ? body.emoji.trim() : ''
+    const emoji = requestedEmoji.length > 0 && requestedEmoji.length <= 8 &&
+      !/[\u0000-\u001f\u007f]/.test(requestedEmoji)
+      ? requestedEmoji
       : '❤️'
     await connectDB()
 
@@ -74,7 +76,7 @@ export async function POST(
         name: reaction.name,
         avatar: reaction.avatar,
       })),
-      reactions: allowedEmojis
+      reactions: [...new Set([...presetEmojis, ...reactions.map((reaction) => reaction.emoji)])]
         .map((value) => ({ emoji: value, count: reactions.filter((reaction) => reaction.emoji === value).length }))
         .filter((reaction) => reaction.count > 0),
     })

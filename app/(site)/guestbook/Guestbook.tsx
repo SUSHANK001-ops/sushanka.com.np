@@ -799,7 +799,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                       </button>
                       {reactionPickerId === entry._id && (
                         <div
-                          className="absolute bottom-7 left-0 z-10 flex gap-1 rounded-full border border-border bg-surface px-2 py-1 shadow-lg"
+                          className="absolute bottom-7 left-0 z-10 flex max-w-[calc(100vw-3rem)] flex-wrap items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg"
                           onClick={(event) => event.stopPropagation()}
                         >
                           {['❤️', '🔥', '👏', '😂', '😍', '🎉', '💯'].map((emoji) => (
@@ -816,6 +816,22 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                               {emoji}
                             </button>
                           ))}
+                          <input
+                            type="text"
+                            inputMode="text"
+                            maxLength={8}
+                            placeholder="😊"
+                            aria-label="Type an emoji reaction"
+                            className="h-7 w-8 border-0 bg-transparent p-0 text-center text-sm outline-none placeholder:text-muted"
+                            onKeyDown={(event) => {
+                              if (event.key !== 'Enter') return
+                              event.preventDefault()
+                              const value = event.currentTarget.value.trim()
+                              if (!value) return
+                              void toggleLike(entry._id, value)
+                              setReactionPickerId(null)
+                            }}
+                          />
                         </div>
                       )}
                       {entry.reactions?.map((reaction) => (
@@ -866,7 +882,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
 
                     {/* Reply composer */}
                     {replyingId === entry._id && (
-                      <div className="mt-3">
+                      <div className="mt-3 ml-8 border-l-2 border-border pl-4 sm:ml-12">
                         {session?.user ? (
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                             <textarea
@@ -907,7 +923,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
 
                     {/* Replies list — show 1, then "see more" */}
                     {entry.replies && entry.replies.length > 0 && (
-                      <div className="mt-4 space-y-3 border-l-2 border-border pl-4">
+                      <div className="mt-4 ml-8 space-y-3 border-l-2 border-border pl-4 sm:ml-12">
                         {(expandedReplies.has(entry._id)
                           ? entry.replies
                           : entry.replies.slice(0, 1)
