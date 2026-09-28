@@ -29,6 +29,11 @@ interface IGuestbookEntry {
   isHidden?: boolean;
   // Stable per-user ids of everyone who liked this entry.
   likes?: string[];
+  likeProfiles?: {
+    userId: string;
+    name?: string;
+    avatar?: string;
+  }[];
   // Text-only replies.
   replies?: IReply[];
 }
@@ -57,6 +62,16 @@ const GuestbookSchema = new mongoose.Schema<IGuestbookEntry>(
     imagePublicId: { type: String },
     isHidden: { type: Boolean, default: false, index: true },
     likes: { type: [String], default: [] },
+    likeProfiles: {
+      type: [
+        {
+          userId: { type: String, required: true },
+          name: { type: String },
+          avatar: { type: String },
+        },
+      ],
+      default: [],
+    },
     replies: { type: [ReplySchema], default: [] },
   },
   { timestamps: true }

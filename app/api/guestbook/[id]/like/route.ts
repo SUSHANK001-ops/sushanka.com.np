@@ -24,7 +24,7 @@ export async function POST(
     const { id } = await params
     await connectDB()
 
-    const entry = await GuestbookModel.findById(id).select('likes')
+    const entry = await GuestbookModel.findById(id).select('likes likeProfiles')
     if (!entry) {
       return NextResponse.json({ error: 'Message not found.' }, { status: 404 })
     }
@@ -33,10 +33,21 @@ export async function POST(
     const already = likes.includes(uid)
 
     // Atomic add/remove so concurrent clicks can't double-count.
-    const update = already ? { $pull: { likes: uid } } : { $addToSet: { likes: uid } }
+    const update = already
+      ? { $pull: { likes: uid, likeProfiles: { userId: uid } } }
+      : {
+          $addToSet: {
+            likes: uid,
+            likeProfiles: {
+              userId: uid,
+              name: session.user.name ?? 'Guest',
+              avatar: session.user.image ?? undefined,
+            },
+          },
+        }
     const updated = await GuestbookModel.findByIdAndUpdate(id, update, {
       new: true,
-    }).select('likes')
+    }).select('likes likeProfiles')
 
     const newLikes: string[] = Array.isArray(updated?.likes) ? updated!.likes : []
 
@@ -44,6 +55,7 @@ export async function POST(
       success: true,
       likeCount: newLikes.length,
       likedByMe: !already,
+      likeProfiles: Array.isArray(updated?.likeProfiles) ? updated.likeProfiles.slice(0, 3) : [],
     })
   } catch (error) {
     console.error('Guestbook like error:', error)

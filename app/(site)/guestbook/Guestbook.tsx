@@ -31,6 +31,7 @@ interface Entry {
   updatedAt?: string
   likeCount?: number
   likedByMe?: boolean
+  likeProfiles?: { userId: string; name?: string; avatar?: string }[]
   replies?: Reply[]
 }
 
@@ -44,25 +45,14 @@ const AdminBadge = () => (
     <Crown size={11} className="admin-badge__crown fill-current" /> Admin
     <style jsx>{`
       .admin-badge {
-        background: linear-gradient(110deg, #b8860b 0%, #f5c542 35%, #fff3b0 50%, #f5c542 65%, #b8860b 100%);
-        background-size: 220% 100%;
-        box-shadow: 0 1px 6px rgba(212, 175, 55, 0.45);
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-        animation: admin-shimmer 3s linear infinite;
+        background: #d7a91e;
+        box-shadow: 0 1px 4px rgba(212, 175, 55, 0.25);
       }
       .admin-badge__crown {
-        animation: admin-bob 1.8s ease-in-out infinite;
-      }
-      @keyframes admin-shimmer {
-        0% { background-position: 100% 0; }
-        100% { background-position: -120% 0; }
-      }
-      @keyframes admin-bob {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        50% { transform: translateY(-1.5px) rotate(-6deg); }
+        color: #fff8d6;
       }
       @media (prefers-reduced-motion: reduce) {
-        .admin-badge, .admin-badge__crown { animation: none; }
+        .admin-badge { animation: none; }
       }
     `}</style>
   </span>
@@ -646,8 +636,8 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
             const isEditing = editingId === entry._id
             return (
               <li key={entry._id} className="rounded-2xl border border-border bg-surface p-5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
                     {entry.avatar && (
                       <Image
                         src={entry.avatar}
@@ -665,13 +655,13 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                       </span>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
                     <span className="font-mono text-xs text-muted">
                       {timeAgo(entry.createdAt)}
                     </span>
                     {/* Owner-only edit / delete controls */}
                     {mine && !isEditing && (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-0.5 sm:gap-1.5">
                         <button
                           onClick={() => beginEdit(entry)}
                           aria-label="Edit message"
@@ -785,6 +775,35 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                         {entry.likeCount ? entry.likeCount : ''}
                         <span className="sr-only">likes</span>
                       </button>
+                      {entry.likeProfiles && entry.likeProfiles.length > 0 && (
+                        <div
+                          className="flex items-center -space-x-2"
+                          aria-label="People who liked this message"
+                        >
+                          {entry.likeProfiles.slice(0, 3).map((profile) =>
+                            profile.avatar ? (
+                              <Image
+                                key={profile.userId}
+                                src={profile.avatar}
+                                alt={profile.name ?? 'Liker'}
+                                width={22}
+                                height={22}
+                                className="rounded-full border-2 border-surface object-cover"
+                              />
+                            ) : (
+                              <span
+                                key={profile.userId}
+                                className="grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-surface bg-surface-2 text-[9px] font-semibold text-muted"
+                              >
+                                {(profile.name ?? '?').charAt(0).toUpperCase()}
+                              </span>
+                            )
+                          )}
+                          {(entry.likeCount ?? 0) > 3 && (
+                            <span className="ml-2 text-xs text-muted">+{entry.likeCount! - 3}</span>
+                          )}
+                        </div>
+                      )}
                       <button
                         onClick={() =>
                           replyingId === entry._id ? cancelReply() : beginReply(entry._id)
