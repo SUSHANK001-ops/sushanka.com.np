@@ -34,7 +34,7 @@ export async function GET() {
     const entries = await GuestbookModel.find({ isHidden: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(200)
-      .select('name message avatar provider userId isAdmin image likes likeProfiles replies createdAt updatedAt')
+      .select('name message avatar provider userId isAdmin image likes likeProfiles reactions replies createdAt updatedAt')
       .lean()
 
     // Shape the response: hide raw like lists / hidden replies, expose derived
@@ -46,6 +46,7 @@ export async function GET() {
     const shaped = (entries as any[]).map((e) => {
       const likes: string[] = Array.isArray(e.likes) ? e.likes : []
       const replies: any[] = Array.isArray(e.replies) ? e.replies : []
+      const reactions: any[] = Array.isArray(e.reactions) ? e.reactions : []
 
       const shapedReplies = replies
         .filter((r) => !r.isHidden)
@@ -78,6 +79,13 @@ export async function GET() {
         likeCount: likes.length,
         likedByMe: viewer ? likes.includes(viewer) : false,
         likeProfiles: Array.isArray(e.likeProfiles) ? e.likeProfiles.slice(0, 3) : [],
+        reactions: reactions.map((reaction) => ({
+          emoji: reaction.emoji,
+          count: reactions.filter((item) => item.emoji === reaction.emoji).length,
+        })).filter((reaction, index, all) => all.findIndex((item) => item.emoji === reaction.emoji) === index),
+        reactionByMe: viewer
+          ? reactions.find((reaction) => reaction.userId === viewer)?.emoji ?? null
+          : null,
         replies: shapedReplies,
       }
     })
@@ -185,6 +193,8 @@ export async function POST(req: NextRequest) {
         likeCount: 0,
         likedByMe: false,
         likeProfiles: [],
+        reactions: [],
+        reactionByMe: null,
         replies: [],
       },
     })

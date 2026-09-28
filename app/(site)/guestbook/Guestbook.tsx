@@ -32,6 +32,8 @@ interface Entry {
   likeCount?: number
   likedByMe?: boolean
   likeProfiles?: { userId: string; name?: string; avatar?: string }[]
+  reactions?: { emoji: string; count: number }[]
+  reactionByMe?: string | null
   replies?: Reply[]
 }
 
@@ -166,6 +168,8 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   const [postingReply, setPostingReply] = useState(false)
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
   const [likeBusy, setLikeBusy] = useState<string | null>(null)
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null)
+  const [reactionPickerId, setReactionPickerId] = useState<string | null>(null)
 
   const load = () => {
     fetch('/api/guestbook')
@@ -325,7 +329,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   }
 
   // ── Likes ──────────────────────────────────────────────────────────────
-  const toggleLike = async (id: string) => {
+  const toggleLike = async (id: string, emoji = '❤️') => {
     if (!requireSignIn('like this message')) return
     if (likeBusy) return
     setLikeBusy(id)
@@ -344,13 +348,26 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
     )
 
     try {
-      const res = await fetch(`/api/guestbook/${id}/like`, { method: 'POST' })
+      const res = await fetch(`/api/guestbook/${id}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to like.')
       // Reconcile with the server truth.
       setEntries((prev) =>
         prev.map((e) =>
-          e._id === id ? { ...e, likedByMe: data.likedByMe, likeCount: data.likeCount } : e
+          e._id === id
+            ? {
+                ...e,
+                likedByMe: data.likedByMe,
+                likeCount: data.likeCount,
+                reactionByMe: data.reactionByMe,
+                reactions: data.reactions,
+                likeProfiles: data.likeProfiles,
+              }
+            : e
         )
       )
     } catch (err) {
@@ -635,7 +652,11 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
             const mine = !!myId && entry.userId === myId
             const isEditing = editingId === entry._id
             return (
-              <li key={entry._id} className="guestbook-entry relative py-2 sm:py-3">
+              <li
+                key={entry._id}
+                className="guestbook-entry relative py-2 sm:py-3"
+                onClick={() => setActiveEntryId((current) => current === entry._id ? null : entry._id)}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
                     {entry.avatar && (
@@ -751,15 +772,18 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                           alt="Guestbook attachment"
                           width={640}
                           height={400}
-                          className="h-auto w-full max-w-sm object-cover"
+                          className="h-auto w-full max-w-sm object-cover transition-transform duration-300 hover:scale-[1.03]"
                         />
                       </div>
                     )}
 
                     {/* Actions: like + reply */}
-                    <div className="mt-3 flex items-center gap-4">
+                    {activeEntryId === entry._id && <div className="relative mt-3 flex items-center gap-4">
                       <button
-                        onClick={() => toggleLike(entry._id)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setReactionPickerId((current) => current === entry._id ? null : entry._id)
+                        }}
                         disabled={likeBusy === entry._id}
                         aria-pressed={entry.likedByMe}
                         aria-label={entry.likedByMe ? 'Unlike' : 'Like'}
@@ -769,13 +793,36 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                             : 'text-muted hover:text-foreground'
                         }`}
                       >
-                        <Heart
-                          size={15}
-                          className={entry.likedByMe ? 'fill-current' : ''}
-                        />
+                        <span className="text-base">{entry.reactionByMe ?? '♡'}</span>
                         {entry.likeCount ? entry.likeCount : ''}
                         <span className="sr-only">likes</span>
                       </button>
+                      {reactionPickerId === entry._id && (
+                        <div
+                          className="absolute bottom-7 left-0 z-10 flex gap-1 rounded-full border border-border bg-surface px-2 py-1 shadow-lg"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {['❤️', '🔥', '👏', '😂', '😍', '🎉', '💯'].map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              className="grid h-7 w-7 place-items-center rounded-full text-sm transition-transform hover:scale-125"
+                              onClick={() => {
+                                void toggleLike(entry._id, emoji)
+                                setReactionPickerId(null)
+                              }}
+                              aria-label={`React ${emoji}`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {entry.reactions?.map((reaction) => (
+                        <span key={reaction.emoji} className="text-xs text-muted">
+                          {reaction.emoji} {reaction.count}
+                        </span>
+                      ))}
                       {entry.likeProfiles && entry.likeProfiles.length > 0 && (
                         <div
                           className="flex items-center -space-x-2"
@@ -806,15 +853,16 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                         </div>
                       )}
                       <button
-                        onClick={() =>
+                        onClick={(event) => {
+                          event.stopPropagation()
                           replyingId === entry._id ? cancelReply() : beginReply(entry._id)
-                        }
+                        }}
                         className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
                       >
                         <MessageCircle size={15} />
                         Reply
                       </button>
-                    </div>
+                    </div>}
 
                     {/* Reply composer */}
                     {replyingId === entry._id && (
@@ -868,11 +916,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                           return (
                             <div
                               key={reply._id}
-                              className={`group/reply ${
-                                reply.isAdmin
-                                  ? 'rounded-xl border border-c-yellow/40 bg-c-yellow/[0.07] p-3'
-                                  : ''
-                              }`}
+                              className="group/reply"
                             >
                               <div className="flex items-center gap-2">
                                 {reply.avatar && (
@@ -888,11 +932,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                                   {reply.name}
                                 </span>
                                 {reply.isAdmin && <AdminBadge />}
-                                {reply.isAdmin && (
-                                  <span className="rounded-full bg-c-yellow/20 px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-wide text-[#8a6d1f] dark:text-c-yellow">
-                                    Author reply
-                                  </span>
-                                )}
                                 {reply.createdAt && (
                                   <span className="font-mono text-[0.65rem] text-muted">
                                     {timeAgo(reply.createdAt)}

@@ -34,6 +34,12 @@ interface IGuestbookEntry {
     name?: string;
     avatar?: string;
   }[];
+  reactions?: {
+    userId: string;
+    emoji: string;
+    name?: string;
+    avatar?: string;
+  }[];
   // Text-only replies.
   replies?: IReply[];
 }
@@ -66,6 +72,17 @@ const GuestbookSchema = new mongoose.Schema<IGuestbookEntry>(
       type: [
         {
           userId: { type: String, required: true },
+          name: { type: String },
+          avatar: { type: String },
+        },
+      ],
+      default: [],
+    },
+    reactions: {
+      type: [
+        {
+          userId: { type: String, required: true },
+          emoji: { type: String, required: true, maxlength: 8 },
           name: { type: String },
           avatar: { type: String },
         },
