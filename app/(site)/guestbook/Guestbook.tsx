@@ -40,16 +40,16 @@ interface Entry {
 const AdminBadge = () => (
   <span
     title="Site admin"
-    className="admin-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white"
+    className="admin-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide"
   >
-    <Crown size={11} className="admin-badge__crown fill-current" /> Admin
+    <Crown size={11} className="admin-badge__crown" /> ADMIN
     <style jsx>{`
       .admin-badge {
-        background: #d7a91e;
-        box-shadow: 0 1px 4px rgba(212, 175, 55, 0.25);
+        border: 1px solid color-mix(in srgb, #78aef7 55%, transparent);
+        color: #78aef7;
       }
       .admin-badge__crown {
-        color: #fff8d6;
+        color: #f5c542;
       }
       @media (prefers-reduced-motion: reduce) {
         .admin-badge { animation: none; }
@@ -635,19 +635,20 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
             const mine = !!myId && entry.userId === myId
             const isEditing = editingId === entry._id
             return (
-              <li key={entry._id} className="rounded-2xl border border-border bg-surface p-5">
+              <li key={entry._id} className="guestbook-entry relative py-2 sm:py-3">
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
                     {entry.avatar && (
                       <Image
                         src={entry.avatar}
                         alt={entry.name}
-                        width={24}
-                        height={24}
-                        className="rounded-full"
+                        width={34}
+                        height={34}
+                        className="rounded-md object-cover"
                       />
                     )}
-                    <span className="font-semibold text-foreground">{entry.name}</span>
+                    <span className="font-medium text-foreground">{entry.name}</span>
+                    <span className="text-sm text-muted">signed the guestbook</span>
                     {entry.isAdmin && <AdminBadge />}
                     {mine && (
                       <span className="rounded-full bg-c-green/20 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-link">
@@ -656,7 +657,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                     )}
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
-                    <span className="font-mono text-xs text-muted">
+                    <span className="font-mono text-xs text-muted/80">
                       {timeAgo(entry.createdAt)}
                     </span>
                     {/* Owner-only edit / delete controls */}
@@ -742,9 +743,9 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                   </div>
                 ) : (
                   <>
-                    <p className="mt-2 text-sm leading-relaxed text-foreground/80">{entry.message}</p>
+                    <p className="mt-2 pl-0 text-sm leading-relaxed text-foreground/80 sm:pl-[46px]">{entry.message}</p>
                     {entry.image && (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-border">
+                      <div className="mt-3 overflow-hidden rounded-xl border border-border sm:ml-[46px]">
                         <Image
                           src={entry.image}
                           alt="Guestbook attachment"
