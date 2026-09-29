@@ -1133,68 +1133,72 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
 
                     {/* Actions: reactions + reply */}
                     <div className="relative mt-3 ml-0 flex flex-wrap items-center gap-3 sm:ml-[46px]">
-                      {/* Reaction picker trigger / Facebook-style hover area */}
-                      <div
-                        className="reaction-trigger relative"
-                        onMouseEnter={() => handleMouseEnterEntry(entry._id)}
-                        onMouseLeave={handleMouseLeaveEntry}
-                        onTouchStart={() => handleTouchStart(entry._id)}
-                        onTouchEnd={handleTouchEnd}
-                        onTouchMove={handleTouchMove}
-                      >
-                        {/* Quick react button — click to toggle default (Like), or shows picker on hover/long-press */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (entry.reactionByMe) {
-                              // If already reacted, clicking removes it
-                              handleReact(entry._id, entry.reactionByMe)
-                            } else {
-                              // Default quick react
-                              handleReact(entry._id, '👍')
-                            }
-                          }}
-                          className={`inline-flex items-center gap-1.5 text-xs transition-colors ${
-                            entry.reactionByMe
-                              ? 'font-semibold'
-                              : 'text-muted hover:text-foreground'
-                          }`}
-                          style={entry.reactionByMe ? { color: emojiByKey[entry.reactionByMe]?.color ?? '#2078f4' } : undefined}
-                          aria-label={entry.reactionByMe ? `You reacted ${emojiByKey[entry.reactionByMe]?.label ?? entry.reactionByMe}. Click to remove.` : 'Like'}
-                        >
-                          {entry.reactionByMe ? (
-                            <EmojiImg emoji={entry.reactionByMe} size={20} />
-                          ) : (
-                            <ThumbsUp size={18} strokeWidth={2.5} />
-                          )}
-                        </button>
+                      {session?.user?.isAdmin && (
+                        <>
+                          {/* Reaction picker trigger / Facebook-style hover area */}
+                          <div
+                            className="reaction-trigger relative"
+                            onMouseEnter={() => handleMouseEnterEntry(entry._id)}
+                            onMouseLeave={handleMouseLeaveEntry}
+                            onTouchStart={() => handleTouchStart(entry._id)}
+                            onTouchEnd={handleTouchEnd}
+                            onTouchMove={handleTouchMove}
+                          >
+                            {/* Quick react button — click to toggle default (Like), or shows picker on hover/long-press */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (entry.reactionByMe) {
+                                  // If already reacted, clicking removes it
+                                  handleReact(entry._id, entry.reactionByMe)
+                                } else {
+                                  // Default quick react
+                                  handleReact(entry._id, '👍')
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1.5 text-xs transition-colors ${
+                                entry.reactionByMe
+                                  ? 'font-semibold'
+                                  : 'text-muted hover:text-foreground'
+                              }`}
+                              style={entry.reactionByMe ? { color: emojiByKey[entry.reactionByMe]?.color ?? '#2078f4' } : undefined}
+                              aria-label={entry.reactionByMe ? `You reacted ${emojiByKey[entry.reactionByMe]?.label ?? entry.reactionByMe}. Click to remove.` : 'Like'}
+                            >
+                              {entry.reactionByMe ? (
+                                <EmojiImg emoji={entry.reactionByMe} size={20} />
+                              ) : (
+                                <ThumbsUp size={18} strokeWidth={2.5} />
+                              )}
+                            </button>
 
-                        {/* Floating picker — positioned above the button */}
-                        <div
-                          className="reaction-picker-wrapper"
-                          onMouseEnter={handleMouseEnterPicker}
-                          onMouseLeave={handleMouseLeavePicker}
-                        >
-                          <ReactionPicker
-                            entryId={entry._id}
-                            currentReaction={entry.reactionByMe}
-                            onReact={handleReact}
-                            visible={pickerVisible}
-                          />
-                        </div>
-                      </div>
+                            {/* Floating picker — positioned above the button */}
+                            <div
+                              className="reaction-picker-wrapper"
+                              onMouseEnter={handleMouseEnterPicker}
+                              onMouseLeave={handleMouseLeavePicker}
+                            >
+                              <ReactionPicker
+                                entryId={entry._id}
+                                currentReaction={entry.reactionByMe}
+                                onReact={handleReact}
+                                visible={pickerVisible}
+                              />
+                            </div>
+                          </div>
 
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          replyingId === entry._id ? cancelReply() : beginReply(entry._id)
-                        }}
-                        className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
-                      >
-                        <MessageCircle size={15} />
-                        Reply
-                      </button>
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              replyingId === entry._id ? cancelReply() : beginReply(entry._id)
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
+                          >
+                            <MessageCircle size={15} />
+                            Reply
+                          </button>
+                        </>
+                      )}
 
                       {/* Reaction display — emoji pills + avatar stack */}
                       <ReactionDisplay

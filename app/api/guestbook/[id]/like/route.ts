@@ -22,6 +22,9 @@ export async function POST(
     if (!uid) {
       return NextResponse.json({ error: 'Please sign in to like.' }, { status: 401 })
     }
+    if (!session.user.isAdmin) {
+      return NextResponse.json({ error: 'Only admins can react.' }, { status: 403 })
+    }
 
     const { id } = await params
     const body = await req.json().catch(() => ({}))
