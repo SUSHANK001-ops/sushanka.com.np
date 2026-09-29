@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import {
@@ -18,6 +18,13 @@ interface Reply {
   createdAt?: string
 }
 
+interface ReactionProfile {
+  userId: string
+  emoji: string
+  name?: string
+  avatar?: string
+}
+
 interface Entry {
   _id: string
   name: string
@@ -33,8 +40,225 @@ interface Entry {
   likedByMe?: boolean
   likeProfiles?: { userId: string; name?: string; avatar?: string }[]
   reactions?: { emoji: string; count: number }[]
+  reactionProfiles?: ReactionProfile[]
   reactionByMe?: string | null
   replies?: Reply[]
+}
+
+/* ─── Facebook-style emoji definitions ──────────────────────────────── */
+
+interface EmojiDef {
+  key: string
+  label: string
+  /** Facebook CDN animated URL — used in the picker hover state */
+  animatedUrl: string
+  /** Facebook CDN static URL — used in the reaction display */
+  staticUrl: string
+  /** Fallback native emoji if images fail to load */
+  fallback: string
+  /** Color used for the "active" highlight when you've reacted */
+  color: string
+}
+
+const FB_EMOJIS: EmojiDef[] = [
+  {
+    key: '👍',
+    label: 'Like',
+    animatedUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Thumbs%20Up.png',
+    staticUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Thumbs%20Up.png',
+    fallback: '👍',
+    color: '#2078f4',
+  },
+  {
+    key: '❤️',
+    label: 'Love',
+    animatedUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Red%20Heart.png',
+    staticUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Red%20Heart.png',
+    fallback: '❤️',
+    color: '#f33e58',
+  },
+  {
+    key: '😂',
+    label: 'Haha',
+    animatedUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Face%20with%20Tears%20of%20Joy.png',
+    staticUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Face%20with%20Tears%20of%20Joy.png',
+    fallback: '😂',
+    color: '#f7b125',
+  },
+  {
+    key: '😮',
+    label: 'Wow',
+    animatedUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Face%20with%20Open%20Mouth.png',
+    staticUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Face%20with%20Open%20Mouth.png',
+    fallback: '😮',
+    color: '#f7b125',
+  },
+  {
+    key: '😢',
+    label: 'Sad',
+    animatedUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Crying%20Face.png',
+    staticUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Crying%20Face.png',
+    fallback: '😢',
+    color: '#f7b125',
+  },
+  {
+    key: '😡',
+    label: 'Angry',
+    animatedUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Angry%20Face.png',
+    staticUrl: 'https://raw.githubusercontent.com/nicedayzhu/jetpack-emoji/master/img/Angry%20Face.png',
+    fallback: '😡',
+    color: '#e9710f',
+  },
+]
+
+const emojiByKey = Object.fromEntries(FB_EMOJIS.map((e) => [e.key, e]))
+
+// Preset keys sent to the API (must stay in sync with the API's presetEmojis)
+const PRESET_KEYS = FB_EMOJIS.map((e) => e.key)
+
+/* ─── Emoji Image component with fallback ───────────────────────────── */
+
+function EmojiImg({
+  emoji,
+  size = 20,
+  className = '',
+  animated = false,
+}: {
+  emoji: string
+  size?: number
+  className?: string
+  animated?: boolean
+}) {
+  const def = emojiByKey[emoji]
+  const [failed, setFailed] = useState(false)
+
+  if (!def || failed) {
+    return (
+      <span className={className} style={{ fontSize: size, lineHeight: 1 }}>
+        {def?.fallback ?? emoji}
+      </span>
+    )
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={animated ? def.animatedUrl : def.staticUrl}
+      alt={def.label}
+      width={size}
+      height={size}
+      className={className}
+      draggable={false}
+      onError={() => setFailed(true)}
+      style={{ width: size, height: size, objectFit: 'contain' }}
+    />
+  )
+}
+
+/* ─── Facebook-style Reaction Picker ────────────────────────────────── */
+
+function ReactionPicker({
+  entryId,
+  currentReaction,
+  onReact,
+  visible,
+}: {
+  entryId: string
+  currentReaction: string | null | undefined
+  onReact: (entryId: string, emoji: string) => void
+  visible: boolean
+}) {
+  const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null)
+
+  if (!visible) return null
+
+  return (
+    <div
+      className="reaction-picker"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      {FB_EMOJIS.map((def, i) => {
+        const isActive = currentReaction === def.key
+        const isHovered = hoveredEmoji === def.key
+        return (
+          <button
+            key={def.key}
+            type="button"
+            className={`reaction-picker__emoji ${isActive ? 'reaction-picker__emoji--active' : ''}`}
+            style={{ animationDelay: `${i * 35}ms` }}
+            onClick={() => onReact(entryId, def.key)}
+            onMouseEnter={() => setHoveredEmoji(def.key)}
+            onMouseLeave={() => setHoveredEmoji(null)}
+            aria-label={`${isActive ? 'Remove' : 'React with'} ${def.label}`}
+            title={def.label}
+          >
+            <span className={`reaction-picker__emoji-inner ${isHovered ? 'reaction-picker__emoji-inner--hovered' : ''}`}>
+              <EmojiImg emoji={def.key} size={isHovered ? 32 : 24} animated={isHovered} />
+            </span>
+            {isHovered && (
+              <span className="reaction-picker__tooltip">{def.label}</span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ─── Reaction Display (profiles + emoji badges) ────────────────────── */
+
+function ReactionDisplay({
+  reactions,
+  reactionProfiles,
+  reactionByMe,
+  entryId,
+  onReact,
+}: {
+  reactions?: { emoji: string; count: number }[]
+  reactionProfiles?: ReactionProfile[]
+  reactionByMe?: string | null
+  entryId: string
+  onReact: (entryId: string, emoji: string) => void
+}) {
+  if (!reactions || reactions.length === 0) return null
+
+  // Show a summary row of all unique emojis + total count
+  const totalCount = reactions.reduce((sum, r) => sum + r.count, 0)
+
+  return (
+    <div className="reaction-display">
+      {/* Profile avatars with emoji badges */}
+      {reactionProfiles && reactionProfiles.length > 0 && (
+        <div className="reaction-display__profiles" aria-label="People who reacted">
+          {reactionProfiles.slice(0, 5).map((profile) => (
+            <div key={`${profile.userId}-${profile.emoji}`} className="reaction-display__avatar-wrap" title={`${profile.name ?? 'Someone'} reacted ${emojiByKey[profile.emoji]?.label ?? profile.emoji}`}>
+              {profile.avatar ? (
+                <Image
+                  src={profile.avatar}
+                  alt={profile.name ?? 'User'}
+                  width={26}
+                  height={26}
+                  className="reaction-display__avatar"
+                />
+              ) : (
+                <span className="reaction-display__avatar-fallback">
+                  {(profile.name ?? '?').charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="reaction-display__avatar-emoji">
+                <EmojiImg emoji={profile.emoji} size={12} />
+              </span>
+            </div>
+          ))}
+          {totalCount > 5 && (
+            <span className="reaction-display__overflow">+{totalCount - 5}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /** Small crown badge marking an allowlisted admin (site owner).
@@ -168,8 +392,21 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   const [postingReply, setPostingReply] = useState(false)
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
   const [likeBusy, setLikeBusy] = useState<string | null>(null)
-  const [activeEntryId, setActiveEntryId] = useState<string | null>(null)
-  const [reactionPickerId, setReactionPickerId] = useState<string | null>(null)
+
+  // Reaction picker state
+  const [pickerEntryId, setPickerEntryId] = useState<string | null>(null)
+  // Long-press handling for mobile
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressTriggered = useRef(false)
+  // Hover timer for desktop reaction picker
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Track touch/mouse device
+  const isTouchDevice = useRef(false)
+
+  useEffect(() => {
+    isTouchDevice.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  }, [])
 
   const load = () => {
     fetch('/api/guestbook')
@@ -183,6 +420,23 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   // rather than re-running on every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [])
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!pickerEntryId) return
+    const handle = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.reaction-picker') && !target.closest('.reaction-trigger')) {
+        setPickerEntryId(null)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    document.addEventListener('touchstart', handle)
+    return () => {
+      document.removeEventListener('mousedown', handle)
+      document.removeEventListener('touchstart', handle)
+    }
+  }, [pickerEntryId])
 
   /** Upload a file to the guestbook uploader, returns url + publicId. */
   const uploadFile = async (file: File): Promise<{ url: string; publicId?: string } | null> => {
@@ -328,21 +582,70 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
     })
   }
 
-  // ── Likes ──────────────────────────────────────────────────────────────
-  const toggleLike = async (id: string, emoji = '❤️') => {
-    if (!requireSignIn('like this message')) return
+  // ── Reactions ─────────────────────────────────────────────────────────
+  const handleReact = useCallback(async (id: string, emoji: string) => {
+    if (!requireSignIn('react to this message')) return
     if (likeBusy) return
     setLikeBusy(id)
+    setPickerEntryId(null)
 
-    // Optimistic toggle.
+    // Find current entry state for optimistic update
+    const entry = entries.find((e) => e._id === id)
+    if (!entry) { setLikeBusy(null); return }
+
+    const wasMyReaction = entry.reactionByMe
+    const isSameEmoji = wasMyReaction === emoji
+    const newReactionByMe = isSameEmoji ? null : emoji
+
+    // Optimistic update
     setEntries((prev) =>
       prev.map((e) => {
         if (e._id !== id) return e
-        const liked = !e.likedByMe
+        const oldReactions = [...(e.reactions ?? [])]
+        const oldProfiles = [...(e.reactionProfiles ?? [])]
+
+        let newReactions = oldReactions
+        let newProfiles = oldProfiles
+
+        if (isSameEmoji) {
+          // Removing reaction
+          newReactions = oldReactions.map((r) =>
+            r.emoji === emoji ? { ...r, count: Math.max(0, r.count - 1) } : r
+          ).filter((r) => r.count > 0)
+          newProfiles = oldProfiles.filter((p) => !(p.userId === myId))
+        } else {
+          // Changing or adding
+          if (wasMyReaction) {
+            // Remove old
+            newReactions = oldReactions.map((r) =>
+              r.emoji === wasMyReaction ? { ...r, count: Math.max(0, r.count - 1) } : r
+            ).filter((r) => r.count > 0)
+            newProfiles = oldProfiles.filter((p) => !(p.userId === myId))
+          }
+          // Add new
+          const existing = newReactions.find((r) => r.emoji === emoji)
+          if (existing) {
+            newReactions = newReactions.map((r) =>
+              r.emoji === emoji ? { ...r, count: r.count + 1 } : r
+            )
+          } else {
+            newReactions = [...newReactions, { emoji, count: 1 }]
+          }
+          newProfiles = [...newProfiles, {
+            userId: myId ?? '',
+            emoji,
+            name: session?.user?.name ?? 'You',
+            avatar: session?.user?.image ?? undefined,
+          }]
+        }
+
         return {
           ...e,
-          likedByMe: liked,
-          likeCount: Math.max(0, (e.likeCount ?? 0) + (liked ? 1 : -1)),
+          reactionByMe: newReactionByMe,
+          reactions: newReactions,
+          reactionProfiles: newProfiles,
+          likedByMe: !!newReactionByMe,
+          likeCount: newProfiles.length,
         }
       })
     )
@@ -354,8 +657,8 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
         body: JSON.stringify({ emoji }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to like.')
-      // Reconcile with the server truth.
+      if (!res.ok) throw new Error(data.error || 'Failed to react.')
+      // Reconcile with server truth
       setEntries((prev) =>
         prev.map((e) =>
           e._id === id
@@ -365,29 +668,80 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                 likeCount: data.likeCount,
                 reactionByMe: data.reactionByMe,
                 reactions: data.reactions,
+                reactionProfiles: data.reactionProfiles,
                 likeProfiles: data.likeProfiles,
               }
             : e
         )
       )
     } catch (err) {
-      // Revert on failure.
-      setEntries((prev) =>
-        prev.map((e) => {
-          if (e._id !== id) return e
-          const liked = !e.likedByMe
-          return {
-            ...e,
-            likedByMe: liked,
-            likeCount: Math.max(0, (e.likeCount ?? 0) + (liked ? 1 : -1)),
-          }
-        })
-      )
-      toast(err instanceof Error ? err.message : 'Failed to like.', 'error')
+      // Revert on failure
+      load()
+      toast(err instanceof Error ? err.message : 'Failed to react.', 'error')
     } finally {
       setLikeBusy(null)
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, likeBusy, myId, session])
+
+  // ── Long Press (mobile) ────────────────────────────────────────────────
+  const handleTouchStart = useCallback((entryId: string) => {
+    longPressTriggered.current = false
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true
+      setPickerEntryId(entryId)
+    }, 500)
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  const handleTouchMove = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  // ── Hover (desktop) ────────────────────────────────────────────────────
+  const handleMouseEnterEntry = useCallback((entryId: string) => {
+    if (isTouchDevice.current) return
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current)
+      hideTimer.current = null
+    }
+    hoverTimer.current = setTimeout(() => {
+      setPickerEntryId(entryId)
+    }, 400)
+  }, [])
+
+  const handleMouseLeaveEntry = useCallback(() => {
+    if (isTouchDevice.current) return
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current)
+      hoverTimer.current = null
+    }
+    hideTimer.current = setTimeout(() => {
+      setPickerEntryId(null)
+    }, 500)
+  }, [])
+
+  const handleMouseEnterPicker = useCallback(() => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current)
+      hideTimer.current = null
+    }
+  }, [])
+
+  const handleMouseLeavePicker = useCallback(() => {
+    hideTimer.current = setTimeout(() => {
+      setPickerEntryId(null)
+    }, 300)
+  }, [])
 
   // ── Replies ────────────────────────────────────────────────────────────
   const beginReply = (id: string) => {
@@ -651,11 +1005,11 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
           {entries.map((entry) => {
             const mine = !!myId && entry.userId === myId
             const isEditing = editingId === entry._id
+            const pickerVisible = pickerEntryId === entry._id
             return (
               <li
                 key={entry._id}
                 className="guestbook-entry relative py-2 sm:py-3"
-                onClick={() => setActiveEntryId((current) => current === entry._id ? null : entry._id)}
               >
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
@@ -777,75 +1131,66 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                       </div>
                     )}
 
-                    {/* Actions: like + reply */}
-                    {activeEntryId === entry._id && <div className="relative mt-3 ml-8 flex items-center gap-3 sm:ml-12">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setReactionPickerId((current) => current === entry._id ? null : entry._id)
-                        }}
-                        aria-label="Add an emoji reaction"
-                        className="inline-flex items-center gap-1 text-xs text-muted transition-colors hover:text-foreground"
+                    {/* Actions: reactions + reply */}
+                    <div className="relative mt-3 ml-0 flex flex-wrap items-center gap-3 sm:ml-[46px]">
+                      {/* Reaction picker trigger / Facebook-style hover area */}
+                      <div
+                        className="reaction-trigger relative"
+                        onMouseEnter={() => handleMouseEnterEntry(entry._id)}
+                        onMouseLeave={handleMouseLeaveEntry}
+                        onTouchStart={() => handleTouchStart(entry._id)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchMove}
                       >
-                        <Plus size={15} />
-                        <span className="sr-only">Add reaction</span>
-                      </button>
-                      {reactionPickerId === entry._id && (
-                        <div
-                          className="absolute bottom-7 left-0 z-10 flex max-w-[calc(100vw-3rem)] flex-wrap items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg"
-                          onClick={(event) => event.stopPropagation()}
+                        {/* Quick react button — click to toggle default (Like), or shows picker on hover/long-press */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (entry.reactionByMe) {
+                              // If already reacted, clicking removes it
+                              handleReact(entry._id, entry.reactionByMe)
+                            } else {
+                              // Default quick react
+                              handleReact(entry._id, '👍')
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 text-xs transition-colors ${
+                            entry.reactionByMe
+                              ? 'font-semibold'
+                              : 'text-muted hover:text-foreground'
+                          }`}
+                          style={entry.reactionByMe ? { color: emojiByKey[entry.reactionByMe]?.color ?? '#2078f4' } : undefined}
+                          aria-label={entry.reactionByMe ? `You reacted ${emojiByKey[entry.reactionByMe]?.label ?? entry.reactionByMe}. Click to remove.` : 'Like'}
                         >
-                          {['❤️', '🥰', '😂', '😮', '😢', '😡', '🔥', '👏'].map((emoji) => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              className="grid h-7 w-7 place-items-center rounded-full text-sm transition-transform hover:scale-125"
-                              onClick={() => {
-                                void toggleLike(entry._id, emoji)
-                                setReactionPickerId(null)
-                              }}
-                              aria-label={`React ${emoji}`}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {entry.reactions?.map((reaction) => (
-                        <span key={reaction.emoji} className="text-xs text-muted">
-                          {reaction.emoji} {reaction.count}
-                        </span>
-                      ))}
-                      {entry.likeProfiles && entry.likeProfiles.length > 0 && (
+                          {entry.reactionByMe ? (
+                            <>
+                              <EmojiImg emoji={entry.reactionByMe} size={16} />
+                              {emojiByKey[entry.reactionByMe]?.label ?? 'Like'}
+                            </>
+                          ) : (
+                            <>
+                              <EmojiImg emoji="👍" size={16} />
+                              Like
+                            </>
+                          )}
+                        </button>
+
+                        {/* Floating picker — positioned above the button */}
                         <div
-                          className="flex items-center -space-x-2"
-                          aria-label="People who liked this message"
+                          className="reaction-picker-wrapper"
+                          onMouseEnter={handleMouseEnterPicker}
+                          onMouseLeave={handleMouseLeavePicker}
                         >
-                          {entry.likeProfiles.slice(0, 3).map((profile) =>
-                            profile.avatar ? (
-                              <Image
-                                key={profile.userId}
-                                src={profile.avatar}
-                                alt={profile.name ?? 'Liker'}
-                                width={22}
-                                height={22}
-                                className="rounded-full border-2 border-surface object-cover"
-                              />
-                            ) : (
-                              <span
-                                key={profile.userId}
-                                className="grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-surface bg-surface-2 text-[9px] font-semibold text-muted"
-                              >
-                                {(profile.name ?? '?').charAt(0).toUpperCase()}
-                              </span>
-                            )
-                          )}
-                          {(entry.likeCount ?? 0) > 3 && (
-                            <span className="ml-2 text-xs text-muted">+{entry.likeCount! - 3}</span>
-                          )}
+                          <ReactionPicker
+                            entryId={entry._id}
+                            currentReaction={entry.reactionByMe}
+                            onReact={handleReact}
+                            visible={pickerVisible}
+                          />
                         </div>
-                      )}
+                      </div>
+
                       <button
                         onClick={(event) => {
                           event.stopPropagation()
@@ -856,7 +1201,16 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                         <MessageCircle size={15} />
                         Reply
                       </button>
-                    </div>}
+
+                      {/* Reaction display — emoji pills + avatar stack */}
+                      <ReactionDisplay
+                        reactions={entry.reactions}
+                        reactionProfiles={entry.reactionProfiles}
+                        reactionByMe={entry.reactionByMe}
+                        entryId={entry._id}
+                        onReact={handleReact}
+                      />
+                    </div>
 
                     {/* Reply composer */}
                     {replyingId === entry._id && (
@@ -973,6 +1327,274 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
           })}
         </ul>
       )}
+
+      {/* Reaction picker & display styles */}
+      <style jsx global>{`
+        /* ─── Reaction Picker (Facebook-style floating bar) ─────────── */
+        .reaction-trigger {
+          position: relative;
+        }
+
+        .reaction-picker-wrapper {
+          position: absolute;
+          bottom: calc(100% + 6px);
+          left: -4px;
+          z-index: 50;
+          pointer-events: none;
+        }
+
+        .reaction-picker-wrapper:has(.reaction-picker) {
+          pointer-events: auto;
+        }
+
+        .reaction-picker {
+          display: flex;
+          align-items: flex-end;
+          gap: 2px;
+          padding: 6px 10px;
+          border-radius: 30px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          box-shadow:
+            0 4px 16px rgba(0, 0, 0, 0.12),
+            0 0 0 1px rgba(0, 0, 0, 0.04);
+          pointer-events: auto;
+          animation: picker-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          transform-origin: bottom left;
+          white-space: nowrap;
+        }
+
+        @keyframes picker-pop {
+          0% {
+            opacity: 0;
+            transform: scale(0.6) translateY(8px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .reaction-picker__emoji {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          border-radius: 50%;
+          transition: background-color 0.15s;
+          animation: emoji-bounce-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+        }
+
+        .reaction-picker__emoji--active {
+          background: color-mix(in srgb, var(--foreground) 8%, transparent);
+        }
+
+        @keyframes emoji-bounce-in {
+          0% {
+            opacity: 0;
+            transform: scale(0) translateY(16px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .reaction-picker__emoji-inner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .reaction-picker__emoji-inner--hovered {
+          transform: scale(1.3) translateY(-6px);
+        }
+
+        .reaction-picker__tooltip {
+          position: absolute;
+          bottom: calc(100% + 6px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: var(--foreground);
+          color: var(--background);
+          font-size: 11px;
+          font-weight: 600;
+          padding: 3px 8px;
+          border-radius: 10px;
+          white-space: nowrap;
+          pointer-events: none;
+          animation: tooltip-pop 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @keyframes tooltip-pop {
+          from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.9); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+
+        /* ─── Reaction Display ─────────────────────────────────────── */
+        .reaction-display {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .reaction-display__summary {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex-wrap: wrap;
+        }
+
+        .reaction-display__pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 8px 3px 6px;
+          border-radius: 20px;
+          border: 1px solid var(--border);
+          background: transparent;
+          cursor: pointer;
+          font-size: 12px;
+          color: var(--muted);
+          transition: all 0.15s ease;
+          position: relative;
+        }
+
+        .reaction-display__pill:hover {
+          border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
+          background: color-mix(in srgb, var(--foreground) 5%, transparent);
+        }
+
+        .reaction-display__pill--mine {
+          border-color: #2078f4;
+          background: color-mix(in srgb, #2078f4 8%, transparent);
+          color: #2078f4;
+        }
+
+        .reaction-display__pill--mine:hover {
+          background: color-mix(in srgb, #2078f4 14%, transparent);
+        }
+
+        .reaction-display__count {
+          font-weight: 600;
+          font-size: 12px;
+          line-height: 1;
+        }
+
+        .reaction-display__tooltip {
+          position: absolute;
+          bottom: calc(100% + 6px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: var(--foreground);
+          color: var(--background);
+          font-size: 11px;
+          padding: 4px 10px;
+          border-radius: 8px;
+          white-space: nowrap;
+          pointer-events: none;
+          z-index: 60;
+          max-width: 200px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          animation: tooltip-pop 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .reaction-display__profiles {
+          display: flex;
+          align-items: center;
+        }
+
+        .reaction-display__avatar-wrap {
+          position: relative;
+          margin-left: -6px;
+          transition: transform 0.15s;
+        }
+
+        .reaction-display__avatar-wrap:first-child {
+          margin-left: 0;
+        }
+
+        .reaction-display__avatar-wrap:hover {
+          transform: scale(1.15);
+          z-index: 2;
+        }
+
+        .reaction-display__avatar {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid var(--surface);
+        }
+
+        .reaction-display__avatar-fallback {
+          display: grid;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          border: 2px solid var(--surface);
+          background: var(--surface-2);
+          font-size: 10px;
+          font-weight: 700;
+          color: var(--muted);
+        }
+
+        .reaction-display__avatar-emoji {
+          position: absolute;
+          bottom: -3px;
+          right: -3px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: var(--surface);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+
+        .reaction-display__overflow {
+          margin-left: 4px;
+          font-size: 11px;
+          color: var(--muted);
+          font-weight: 600;
+        }
+
+        /* ─── Mobile adjustments ──────────────────────────────────── */
+        @media (max-width: 640px) {
+          .reaction-picker-wrapper {
+            left: 0;
+          }
+
+          .reaction-picker {
+            gap: 0;
+            padding: 4px 6px;
+          }
+
+          .reaction-picker__emoji {
+            padding: 3px;
+          }
+        }
+
+        /* ─── Reduced motion ──────────────────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+          .reaction-picker,
+          .reaction-picker__emoji,
+          .reaction-picker__emoji-inner,
+          .reaction-picker__tooltip {
+            animation: none !important;
+            transition: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
