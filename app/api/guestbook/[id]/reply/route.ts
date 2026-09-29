@@ -24,6 +24,9 @@ export async function POST(
     if (!session?.user) {
       return NextResponse.json({ error: 'Please sign in to reply.' }, { status: 401 })
     }
+    if (!session.user.isAdmin) {
+      return NextResponse.json({ error: 'Only admins can reply.' }, { status: 403 })
+    }
     const uid = userKey(session)
 
     const { id } = await params
