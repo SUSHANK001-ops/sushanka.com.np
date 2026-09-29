@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import {
   Loader2, Send, Github, LogOut, ImagePlus, X,
-  Pencil, Trash2, Check, Plus, MessageCircle, Crown,
+  Pencil, Trash2, Check, Plus, MessageCircle, Crown, ThumbsUp,
 } from 'lucide-react'
 import { ToastProvider, useToast, ConfirmModal, SignInPopup } from './ui'
 
@@ -1164,15 +1164,9 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                           aria-label={entry.reactionByMe ? `You reacted ${emojiByKey[entry.reactionByMe]?.label ?? entry.reactionByMe}. Click to remove.` : 'Like'}
                         >
                           {entry.reactionByMe ? (
-                            <>
-                              <EmojiImg emoji={entry.reactionByMe} size={16} />
-                              {emojiByKey[entry.reactionByMe]?.label ?? 'Like'}
-                            </>
+                            <EmojiImg emoji={entry.reactionByMe} size={20} />
                           ) : (
-                            <>
-                              <EmojiImg emoji="👍" size={16} />
-                              Like
-                            </>
+                            <ThumbsUp size={18} strokeWidth={2.5} />
                           )}
                         </button>
 
