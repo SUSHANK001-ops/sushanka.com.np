@@ -19,7 +19,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://cloud.umami.is https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://res.cloudinary.com https://i.scdn.co https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://sushanka.com.np https://*.googlesyndication.com https://*.doubleclick.net",
+  "img-src 'self' data: blob: https://res.cloudinary.com https://i.scdn.co https://avatars.githubusercontent.com https://raw.githubusercontent.com https://lh3.googleusercontent.com https://sushanka.com.np https://*.googlesyndication.com https://*.doubleclick.net",
   "font-src 'self' data:",
   "connect-src 'self' https://cloud.umami.is https://api-gateway.umami.dev https://*.googlesyndication.com https://*.doubleclick.net",
   "frame-src https://*.googlesyndication.com https://*.doubleclick.net",
@@ -64,6 +64,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com', // Google avatars (auth)
+      },
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com', // Facebook-style emoji images
       },
     ],
   },

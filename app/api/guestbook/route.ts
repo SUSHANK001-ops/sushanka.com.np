@@ -83,6 +83,12 @@ export async function GET() {
           emoji: reaction.emoji,
           count: reactions.filter((item) => item.emoji === reaction.emoji).length,
         })).filter((reaction, index, all) => all.findIndex((item) => item.emoji === reaction.emoji) === index),
+        reactionProfiles: reactions.map((r) => ({
+          userId: r.userId,
+          emoji: r.emoji,
+          name: r.name,
+          avatar: r.avatar,
+        })),
         reactionByMe: viewer
           ? reactions.find((reaction) => reaction.userId === viewer)?.emoji ?? null
           : null,
