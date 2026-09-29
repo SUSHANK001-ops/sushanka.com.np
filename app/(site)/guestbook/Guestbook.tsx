@@ -228,7 +228,7 @@ function ReactionDisplay({
   const totalCount = reactions.reduce((sum, r) => sum + r.count, 0)
 
   return (
-    <div className="reaction-display">
+    <div className="reaction-display ml-auto">
       {/* Profile avatars with emoji badges */}
       {reactionProfiles && reactionProfiles.length > 0 && (
         <div className="reaction-display__profiles" aria-label="People who reacted">
