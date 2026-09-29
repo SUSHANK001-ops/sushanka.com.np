@@ -34,29 +34,26 @@ export async function POST(
       return NextResponse.json({ error: 'Message not found.' }, { status: 404 })
     }
 
-    const reactions = Array.isArray(entry.reactions) ? [...entry.reactions] : []
-    const currentIndex = reactions.findIndex((reaction) => reaction.userId === uid)
-    const current = currentIndex >= 0 ? reactions[currentIndex] : null
-    if (current?.emoji === emoji) {
-      reactions.splice(currentIndex, 1)
-    } else if (currentIndex >= 0) {
-      reactions[currentIndex] = {
-        ...current,
-        emoji,
-        name: session.user.name ?? 'Guest',
-        avatar: session.user.image ?? undefined,
+    const currentIndex = entry.reactions.findIndex((reaction: any) => reaction.userId === uid)
+    if (currentIndex >= 0) {
+      if (entry.reactions[currentIndex].emoji === emoji) {
+        entry.reactions.splice(currentIndex, 1)
+      } else {
+        entry.reactions[currentIndex].emoji = emoji
+        entry.reactions[currentIndex].name = session.user.name ?? 'Guest'
+        entry.reactions[currentIndex].avatar = session.user.image ?? undefined
       }
     } else {
-      reactions.push({
+      entry.reactions.push({
         userId: uid,
         emoji,
         name: session.user.name ?? 'Guest',
         avatar: session.user.image ?? undefined,
       })
     }
-    entry.reactions = reactions
-    entry.likes = reactions.map((reaction) => reaction.userId)
-    entry.likeProfiles = reactions.map((reaction) => ({
+    
+    entry.likes = entry.reactions.map((reaction: any) => reaction.userId)
+    entry.likeProfiles = entry.reactions.map((reaction: any) => ({
       userId: reaction.userId,
       name: reaction.name,
       avatar: reaction.avatar,
@@ -65,18 +62,18 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      likeCount: reactions.length,
-      likedByMe: reactions.some((reaction) => reaction.userId === uid),
-      reactionByMe: reactions.find((reaction) => reaction.userId === uid)?.emoji ?? null,
-      likeProfiles: reactions.slice(0, 3).map((reaction) => ({
+      likeCount: entry.reactions.length,
+      likedByMe: entry.reactions.some((reaction: any) => reaction.userId === uid),
+      reactionByMe: entry.reactions.find((reaction: any) => reaction.userId === uid)?.emoji ?? null,
+      likeProfiles: entry.reactions.slice(0, 3).map((reaction: any) => ({
         userId: reaction.userId,
         name: reaction.name,
         avatar: reaction.avatar,
       })),
-      reactions: [...new Set([...presetEmojis, ...reactions.map((reaction) => reaction.emoji)])]
-        .map((value) => ({ emoji: value, count: reactions.filter((reaction) => reaction.emoji === value).length }))
-        .filter((reaction) => reaction.count > 0),
-      reactionProfiles: reactions.map((r) => ({
+      reactions: [...new Set([...presetEmojis, ...entry.reactions.map((reaction: any) => reaction.emoji)])]
+        .map((value) => ({ emoji: value, count: entry.reactions.filter((reaction: any) => reaction.emoji === value).length }))
+        .filter((reaction: any) => reaction.count > 0),
+      reactionProfiles: entry.reactions.map((r: any) => ({
         userId: r.userId,
         emoji: r.emoji,
         name: r.name,
