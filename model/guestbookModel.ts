@@ -19,6 +19,8 @@ interface IGuestbookEntry {
   provider?: string;
   // Stable per-user id (from auth) to prevent duplicate spam per person.
   userId?: string;
+  // Optional contact email for notifications
+  email?: string;
   // True if the entry author is an allowlisted admin (for the crown badge).
   isAdmin?: boolean;
   // Optional user-uploaded image attached to the message.
@@ -65,6 +67,7 @@ const GuestbookSchema = new mongoose.Schema<IGuestbookEntry>(
     avatar: { type: String },
     provider: { type: String },
     userId: { type: String, index: true },
+    email: { type: String },
     isAdmin: { type: Boolean, default: false },
     image: { type: String },
     imagePublicId: { type: String },

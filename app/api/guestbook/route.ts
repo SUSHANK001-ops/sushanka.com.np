@@ -182,6 +182,7 @@ export async function POST(req: NextRequest) {
       message,
       avatar,
       userId: uid,
+      email: session.user.email?.toLowerCase(),
       isAdmin: admin,
       image,
       imagePublicId,
