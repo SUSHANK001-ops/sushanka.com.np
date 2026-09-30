@@ -4,6 +4,7 @@ import GuestbookModel from '@/model/guestbookModel'
 import { getClientIp, rateLimit } from '@/lib/rateLimit'
 import { auth, isAdminEmail } from '@/auth'
 import { userKey } from '@/lib/userKey'
+import { sendNotificationEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,6 +71,18 @@ export async function POST(
     await entry.save()
 
     const saved = entry.replies[entry.replies.length - 1]
+
+    // Send email notification if admin replies to a user
+    if (session.user.isAdmin && entry.userId?.includes('@') && entry.userId !== session.user.email) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sushanka.com.np'
+      // Send asynchronously without blocking the response
+      sendNotificationEmail({
+        to: entry.userId,
+        subject: 'Admin replied to your Guestbook entry!',
+        message: `Sushanka has replied to your guestbook entry: "${message}"`,
+        link: `${appUrl}/guestbook#entry-${entry._id}`
+      })
+    }
 
     return NextResponse.json({
       success: true,
