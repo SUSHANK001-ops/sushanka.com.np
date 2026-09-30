@@ -1012,6 +1012,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
             return (
               <li
                 key={entry._id}
+                id={`entry-${entry._id}`}
                 className="guestbook-entry relative py-2 sm:py-3"
               >
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">

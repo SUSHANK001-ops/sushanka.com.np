@@ -3,6 +3,7 @@ import connectDB from '@/lib/db'
 import GuestbookModel from '@/model/guestbookModel'
 import { auth } from '@/auth'
 import { userKey } from '@/lib/userKey'
+import { sendNotificationEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ export async function POST(
     const emoji = presetEmojis.includes(requestedEmoji) ? requestedEmoji : '👍'
     await connectDB()
 
-    const entry = await GuestbookModel.findById(id).select('likes likeProfiles reactions')
+    const entry = await GuestbookModel.findById(id).select('likes likeProfiles reactions userId')
     if (!entry) {
       return NextResponse.json({ error: 'Message not found.' }, { status: 404 })
     }
@@ -53,6 +54,17 @@ export async function POST(
         name: session.user.name ?? 'Guest',
         avatar: session.user.image ?? undefined,
       })
+
+      // Send email notification if admin likes a user's entry
+      if (session.user.isAdmin && entry.userId?.includes('@') && entry.userId !== session.user.email) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sushanka.com.np'
+        sendNotificationEmail({
+          to: entry.userId,
+          subject: 'Admin reacted to your Guestbook entry!',
+          message: `Sushanka reacted to your guestbook entry with ${emoji}`,
+          link: `${appUrl}/guestbook#entry-${entry._id}`
+        })
+      }
     }
     
     entry.likes = entry.reactions.map((reaction: any) => reaction.userId)
