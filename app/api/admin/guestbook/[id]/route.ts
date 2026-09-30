@@ -27,19 +27,24 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await req.json()
-    const isHidden = Boolean(body?.isHidden)
+    
+    // We only update the boolean flags that were actually sent in the request body
+    const updates: any = {}
+    if (typeof body?.isHidden === 'boolean') updates.isHidden = body.isHidden
+    if (typeof body?.isTextHidden === 'boolean') updates.isTextHidden = body.isTextHidden
+    if (typeof body?.isImageHidden === 'boolean') updates.isImageHidden = body.isImageHidden
 
     await connectDB()
     const entry = await GuestbookModel.findByIdAndUpdate(
       id,
-      { isHidden },
+      { $set: updates },
       { new: true }
     )
     if (!entry) {
       return NextResponse.json({ error: 'Entry not found.' }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, id, isHidden: entry.isHidden })
+    return NextResponse.json({ success: true, id, isHidden: entry.isHidden, isTextHidden: entry.isTextHidden, isImageHidden: entry.isImageHidden })
   } catch (error) {
     console.error('Admin guestbook PATCH error:', error)
     return NextResponse.json({ error: 'Failed to update entry.' }, { status: 500 })

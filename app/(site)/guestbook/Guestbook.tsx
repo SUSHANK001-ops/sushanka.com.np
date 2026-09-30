@@ -36,6 +36,9 @@ interface Entry {
   image?: string
   createdAt: string
   updatedAt?: string
+  isHidden?: boolean
+  isTextHidden?: boolean
+  isImageHidden?: boolean
   likeCount?: number
   likedByMe?: boolean
   likeProfiles?: { userId: string; name?: string; avatar?: string }[]
@@ -1009,6 +1012,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
             return (
               <li
                 key={entry._id}
+                id={`entry-${entry._id}`}
                 className="guestbook-entry relative py-2 sm:py-3"
               >
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
@@ -1118,8 +1122,16 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                   </div>
                 ) : (
                   <>
-                    <p className="mt-2 pl-0 text-sm leading-relaxed text-foreground/80 sm:pl-[46px]">{entry.message}</p>
-                    {entry.image && (
+                    {entry.isTextHidden ? (
+                      <p className="mt-2 pl-0 text-sm italic text-muted sm:pl-[46px]">[Message hidden by moderator]</p>
+                    ) : (
+                      <p className="mt-2 pl-0 text-sm leading-relaxed text-foreground/80 sm:pl-[46px]">{entry.message}</p>
+                    )}
+                    {entry.isImageHidden ? (
+                      <div className="mt-3 overflow-hidden rounded-xl border border-border border-dashed bg-surface-2 p-4 text-center sm:ml-[46px]">
+                        <p className="text-xs italic text-muted">[Image hidden by moderator]</p>
+                      </div>
+                    ) : entry.image && (
                       <div className="mt-3 overflow-hidden rounded-xl border border-border sm:ml-[46px]">
                         <Image
                           src={entry.image}

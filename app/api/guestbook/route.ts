@@ -34,7 +34,7 @@ export async function GET() {
     const entries = await GuestbookModel.find({ isHidden: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(200)
-      .select('name message avatar provider userId isAdmin image likes likeProfiles reactions replies createdAt updatedAt')
+      .select('name message avatar provider userId isAdmin image likes likeProfiles reactions replies createdAt updatedAt isTextHidden isImageHidden')
       .lean()
 
     // Shape the response: hide raw like lists / hidden replies, expose derived
@@ -73,7 +73,9 @@ export async function GET() {
         provider: e.provider,
         userId: e.userId,
         isAdmin: isAdminEmail(e.userId) || Boolean(e.isAdmin),
-        image: e.image,
+        image: e.isImageHidden ? undefined : e.image,
+        isTextHidden: Boolean(e.isTextHidden),
+        isImageHidden: Boolean(e.isImageHidden),
         createdAt: e.createdAt,
         updatedAt: e.updatedAt,
         likeCount: likes.length,

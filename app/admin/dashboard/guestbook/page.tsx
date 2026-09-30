@@ -23,6 +23,8 @@ interface Entry {
   userId?: string;
   isAdmin?: boolean;
   isHidden?: boolean;
+  isTextHidden?: boolean;
+  isImageHidden?: boolean;
   likes?: string[];
   replies?: Reply[];
   createdAt: string;
@@ -45,18 +47,19 @@ export default function AdminGuestbookPage() {
 
   useEffect(load, []);
 
-  const toggleHide = async (entry: Entry) => {
-    setBusyId(entry._id);
+  const toggleHide = async (entry: Entry, field: 'isHidden' | 'isTextHidden' | 'isImageHidden' = 'isHidden') => {
+    setBusyId(entry._id + field);
     try {
+      const payload = { [field]: !entry[field] };
       const res = await fetch(`/api/admin/guestbook/${entry._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isHidden: !entry.isHidden }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed.");
       setEntries((prev) =>
-        prev.map((e) => (e._id === entry._id ? { ...e, isHidden: data.isHidden } : e))
+        prev.map((e) => (e._id === entry._id ? { ...e, [field]: data[field] } : e))
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed.");
@@ -193,7 +196,17 @@ export default function AdminGuestbookPage() {
                     )}
                     {entry.isHidden && (
                       <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/50">
-                        Hidden
+                        All Hidden
+                      </span>
+                    )}
+                    {entry.isTextHidden && !entry.isHidden && (
+                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/50">
+                        Text Hidden
+                      </span>
+                    )}
+                    {entry.isImageHidden && !entry.isHidden && (
+                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/50">
+                        Image Hidden
                       </span>
                     )}
                     <span className="text-xs text-white/30">
@@ -277,29 +290,77 @@ export default function AdminGuestbookPage() {
                   )}
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    onClick={() => toggleHide(entry)}
-                    disabled={busyId === entry._id}
-                    title={entry.isHidden ? "Show" : "Hide"}
-                    className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-white/60 transition-colors hover:text-white disabled:opacity-50"
-                  >
-                    {busyId === entry._id ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : entry.isHidden ? (
-                      <Eye size={15} />
-                    ) : (
-                      <EyeOff size={15} />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => remove(entry)}
-                    disabled={busyId === entry._id}
-                    title="Delete permanently"
-                    className="grid h-8 w-8 place-items-center rounded-lg border border-red-500/30 text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                <div className="flex shrink-0 items-center gap-2 flex-col sm:flex-row">
+                  <div className="flex gap-1 flex-col items-center border border-white/5 bg-white/5 rounded-lg p-1">
+                    <span className="text-[9px] uppercase text-white/40 font-semibold">All</span>
+                    <button
+                      onClick={() => toggleHide(entry, 'isHidden')}
+                      disabled={busyId === entry._id + 'isHidden'}
+                      title={entry.isHidden ? "Show completely" : "Hide completely"}
+                      className="grid h-7 w-7 place-items-center rounded bg-white/5 text-white/60 transition-colors hover:text-white hover:bg-white/10 disabled:opacity-50"
+                    >
+                      {busyId === entry._id + 'isHidden' ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : entry.isHidden ? (
+                        <Eye size={14} />
+                      ) : (
+                        <EyeOff size={14} />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="flex gap-1 flex-col items-center border border-white/5 bg-white/5 rounded-lg p-1">
+                    <span className="text-[9px] uppercase text-white/40 font-semibold">Text</span>
+                    <button
+                      onClick={() => toggleHide(entry, 'isTextHidden')}
+                      disabled={busyId === entry._id + 'isTextHidden'}
+                      title={entry.isTextHidden ? "Show text" : "Hide text"}
+                      className="grid h-7 w-7 place-items-center rounded bg-white/5 text-white/60 transition-colors hover:text-white hover:bg-white/10 disabled:opacity-50"
+                    >
+                      {busyId === entry._id + 'isTextHidden' ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : entry.isTextHidden ? (
+                        <Eye size={14} />
+                      ) : (
+                        <EyeOff size={14} />
+                      )}
+                    </button>
+                  </div>
+
+                  {entry.image && (
+                    <div className="flex gap-1 flex-col items-center border border-white/5 bg-white/5 rounded-lg p-1">
+                      <span className="text-[9px] uppercase text-white/40 font-semibold">Img</span>
+                      <button
+                        onClick={() => toggleHide(entry, 'isImageHidden')}
+                        disabled={busyId === entry._id + 'isImageHidden'}
+                        title={entry.isImageHidden ? "Show image" : "Hide image"}
+                        className="grid h-7 w-7 place-items-center rounded bg-white/5 text-white/60 transition-colors hover:text-white hover:bg-white/10 disabled:opacity-50"
+                      >
+                        {busyId === entry._id + 'isImageHidden' ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : entry.isImageHidden ? (
+                          <Eye size={14} />
+                        ) : (
+                          <EyeOff size={14} />
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex gap-1 flex-col items-center ml-2">
+                    <span className="text-[9px] uppercase text-white/40 font-semibold invisible">Del</span>
+                    <button
+                      onClick={() => remove(entry)}
+                      disabled={busyId === entry._id}
+                      title="Delete permanently"
+                      className="grid h-8 w-8 place-items-center rounded-lg border border-red-500/30 text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      {busyId === entry._id ? (
+                        <Loader2 size={15} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={15} />
+                      )}
+                    </button>
                 </div>
               </div>
             </li>

@@ -27,6 +27,8 @@ interface IGuestbookEntry {
   imagePublicId?: string;
   // Admin moderation: hidden entries are kept in the DB but not shown publicly.
   isHidden?: boolean;
+  isTextHidden?: boolean;
+  isImageHidden?: boolean;
   // Stable per-user ids of everyone who liked this entry.
   likes?: string[];
   likeProfiles?: {
@@ -67,6 +69,8 @@ const GuestbookSchema = new mongoose.Schema<IGuestbookEntry>(
     image: { type: String },
     imagePublicId: { type: String },
     isHidden: { type: Boolean, default: false, index: true },
+    isTextHidden: { type: Boolean, default: false },
+    isImageHidden: { type: Boolean, default: false },
     likes: { type: [String], default: [] },
     likeProfiles: {
       type: [
