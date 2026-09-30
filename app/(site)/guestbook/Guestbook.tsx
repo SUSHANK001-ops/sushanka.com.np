@@ -1128,9 +1128,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                       <p className="mt-2 pl-0 text-sm leading-relaxed text-foreground/80 sm:pl-[46px]">{entry.message}</p>
                     )}
                     {entry.isImageHidden ? (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-border border-dashed bg-surface-2 p-4 text-center sm:ml-[46px]">
-                        <p className="text-xs italic text-muted">[Image hidden by moderator]</p>
-                      </div>
+                      <p className="mt-2 pl-0 text-sm italic text-muted sm:pl-[46px]">[Image hidden by moderator]</p>
                     ) : entry.image && (
                       <div className="mt-3 overflow-hidden rounded-xl border border-border sm:ml-[46px]">
                         <Image
