@@ -72,9 +72,10 @@ export async function POST(
 
     const saved = entry.replies[entry.replies.length - 1]
 
-    // Send email notification if admin replies to a user
+    // Send email notification if admin replies to a user (not when admin replies to their own post)
     const recipientEmail = (entry.email || (entry.userId?.includes('@') ? entry.userId : null))?.trim()
-    if (session.user.isAdmin && recipientEmail) {
+    const adminEmail = session.user.email?.toLowerCase()
+    if (session.user.isAdmin && recipientEmail && recipientEmail.toLowerCase() !== adminEmail) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'https://sushanka.com.np'
       await sendNotificationEmail({
         to: recipientEmail,
