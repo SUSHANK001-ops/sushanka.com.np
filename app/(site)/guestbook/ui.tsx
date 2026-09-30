@@ -1,5 +1,6 @@
 'use client'
-import React, { createContext, useCallback, useContext, useState } from 'react'
+import React, { createContext, useCallback, useContext, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { CheckCircle2, AlertCircle, Info, X, LogIn, Github } from 'lucide-react'
 
 /* ─────────────────────────── Toasts ─────────────────────────── */
@@ -126,9 +127,13 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-[210] flex items-center justify-center p-4">
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  if (!open || !mounted) return null
+  
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
       <div className="modal-in relative w-full max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-xl">
         <h3 className="display-serif text-xl text-foreground">{title}</h3>
@@ -172,7 +177,8 @@ export function ConfirmModal({
           }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -202,12 +208,15 @@ export function SignInPopup({
   onClose,
   onSignIn,
 }: SignInPopupProps) {
-  if (!open) return null
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  if (!open || !mounted) return null
   const showGithub = providers?.github ?? true
   const showGoogle = providers?.google ?? true
 
-  return (
-    <div className="fixed inset-0 z-[210] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="modal-in relative w-full max-w-sm rounded-2xl border border-border bg-surface p-6 text-center shadow-xl">
         <button
@@ -263,6 +272,7 @@ export function SignInPopup({
           }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   )
 }
