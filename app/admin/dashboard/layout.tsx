@@ -53,15 +53,15 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#1A1A1A]">
+    <div className="flex min-h-screen flex-col md:flex-row bg-[#1A1A1A]">
       {/* Sidebar */}
-      <aside className="fixed flex h-full w-64 flex-col border-r border-white/10 bg-white/[0.02] p-6">
+      <aside className="relative md:fixed flex w-full md:h-full md:w-64 flex-col border-b md:border-b-0 md:border-r border-white/10 bg-white/[0.02] p-6">
         <div className="mb-8">
           <h2 className="text-xl font-bold text-white">Admin Panel</h2>
           <p className="mt-1 text-sm text-white/40">{session.user.name}</p>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex flex-wrap md:flex-col gap-2 flex-1 md:space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -91,7 +91,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main content */}
-      <main className="ml-64 flex-1 p-8">{children}</main>
+      <main className="md:ml-64 flex-1 p-4 md:p-8 overflow-x-hidden">{children}</main>
     </div>
   );
 }
