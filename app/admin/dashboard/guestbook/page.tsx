@@ -361,6 +361,7 @@ export default function AdminGuestbookPage() {
                         <Trash2 size={15} />
                       )}
                     </button>
+                  </div>
                 </div>
               </div>
             </li>
