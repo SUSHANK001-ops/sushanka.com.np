@@ -7,21 +7,17 @@ import { themeInitScript } from "./ui/theme/ThemeProvider";
 const geist = Geist({
   variable: "--font-geist",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
 // Serif display face for headings — the signature editorial voice.
 const fraunces = Fraunces({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
 
 const notoSansDevanagari = Noto_Sans_Devanagari({
