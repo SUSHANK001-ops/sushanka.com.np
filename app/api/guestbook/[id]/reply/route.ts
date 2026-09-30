@@ -75,8 +75,7 @@ export async function POST(
     // Send email notification if admin replies to a user
     if (session.user.isAdmin && entry.userId?.includes('@') && entry.userId !== session.user.email) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sushanka.com.np'
-      // Send asynchronously without blocking the response
-      sendNotificationEmail({
+      await sendNotificationEmail({
         to: entry.userId,
         subject: 'Admin replied to your Guestbook entry!',
         message: `Sushanka has replied to your guestbook entry: "${message}"`,

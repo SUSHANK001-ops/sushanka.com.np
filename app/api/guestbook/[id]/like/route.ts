@@ -58,7 +58,7 @@ export async function POST(
       // Send email notification if admin likes a user's entry
       if (session.user.isAdmin && entry.userId?.includes('@') && entry.userId !== session.user.email) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sushanka.com.np'
-        sendNotificationEmail({
+        await sendNotificationEmail({
           to: entry.userId,
           subject: 'Admin reacted to your Guestbook entry!',
           message: `Sushanka reacted to your guestbook entry with ${emoji}`,
