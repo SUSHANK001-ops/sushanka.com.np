@@ -59,9 +59,10 @@ export async function POST(
       shouldNotify = true
     }
 
-    // Send email notification if admin likes/reacts to a user's entry
+    // Send email notification if admin likes/reacts to a user's entry (not when admin reacts to their own post)
     const recipientEmail = (entry.email || (entry.userId?.includes('@') ? entry.userId : null))?.trim()
-    if (shouldNotify && session.user.isAdmin && recipientEmail) {
+    const adminEmail = session.user.email?.toLowerCase()
+    if (shouldNotify && session.user.isAdmin && recipientEmail && recipientEmail.toLowerCase() !== adminEmail) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'https://sushanka.com.np'
       await sendNotificationEmail({
         to: recipientEmail,
