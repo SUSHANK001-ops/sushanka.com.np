@@ -33,11 +33,12 @@ export async function POST(
     const emoji = presetEmojis.includes(requestedEmoji) ? requestedEmoji : '👍'
     await connectDB()
 
-    const entry = await GuestbookModel.findById(id).select('likes likeProfiles reactions userId')
+    const entry = await GuestbookModel.findById(id).select('likes likeProfiles reactions userId email')
     if (!entry) {
       return NextResponse.json({ error: 'Message not found.' }, { status: 404 })
     }
 
+    let shouldNotify = false
     const currentIndex = entry.reactions.findIndex((reaction: any) => reaction.userId === uid)
     if (currentIndex >= 0) {
       if (entry.reactions[currentIndex].emoji === emoji) {
@@ -46,6 +47,7 @@ export async function POST(
         entry.reactions[currentIndex].emoji = emoji
         entry.reactions[currentIndex].name = session.user.name ?? 'Guest'
         entry.reactions[currentIndex].avatar = session.user.image ?? undefined
+        shouldNotify = true
       }
     } else {
       entry.reactions.push({
@@ -54,17 +56,19 @@ export async function POST(
         name: session.user.name ?? 'Guest',
         avatar: session.user.image ?? undefined,
       })
+      shouldNotify = true
+    }
 
-      // Send email notification if admin likes a user's entry
-      if (session.user.isAdmin && entry.userId?.includes('@') && entry.userId !== session.user.email) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sushanka.com.np'
-        await sendNotificationEmail({
-          to: entry.userId,
-          subject: 'Admin reacted to your Guestbook entry!',
-          message: `Sushanka reacted to your guestbook entry with ${emoji}`,
-          link: `${appUrl}/guestbook#entry-${entry._id}`
-        })
-      }
+    // Send email notification if admin likes/reacts to a user's entry
+    const recipientEmail = (entry.email || (entry.userId?.includes('@') ? entry.userId : null))?.trim()
+    if (shouldNotify && session.user.isAdmin && recipientEmail) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'https://sushanka.com.np'
+      await sendNotificationEmail({
+        to: recipientEmail,
+        subject: 'Admin reacted to your Guestbook entry!',
+        message: `Sushanka reacted to your guestbook entry with ${emoji}`,
+        link: `${appUrl}/guestbook#entry-${entry._id}`
+      })
     }
     
     entry.likes = entry.reactions.map((reaction: any) => reaction.userId)

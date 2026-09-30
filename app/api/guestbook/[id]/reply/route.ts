@@ -73,10 +73,11 @@ export async function POST(
     const saved = entry.replies[entry.replies.length - 1]
 
     // Send email notification if admin replies to a user
-    if (session.user.isAdmin && entry.userId?.includes('@') && entry.userId !== session.user.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sushanka.com.np'
+    const recipientEmail = (entry.email || (entry.userId?.includes('@') ? entry.userId : null))?.trim()
+    if (session.user.isAdmin && recipientEmail) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'https://sushanka.com.np'
       await sendNotificationEmail({
-        to: entry.userId,
+        to: recipientEmail,
         subject: 'Admin replied to your Guestbook entry!',
         message: `Sushanka has replied to your guestbook entry: "${message}"`,
         link: `${appUrl}/guestbook#entry-${entry._id}`
