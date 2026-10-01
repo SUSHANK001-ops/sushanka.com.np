@@ -1,7 +1,7 @@
 'use client'
 import React, { createContext, useCallback, useContext, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, AlertCircle, Info, X, LogIn, Github } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Info, X, LogIn } from 'lucide-react'
 
 /* ─────────────────────────── Toasts ─────────────────────────── */
 
@@ -196,9 +196,9 @@ const GoogleGlyph = () => (
 interface SignInPopupProps {
   open: boolean
   action?: string // e.g. "like this message", "reply", "leave a message"
-  providers?: { github?: boolean; google?: boolean }
+  providers?: { google?: boolean }
   onClose: () => void
-  onSignIn: (provider: 'github' | 'google') => void
+  onSignIn: (provider: 'google') => void
 }
 
 export function SignInPopup({
@@ -212,7 +212,6 @@ export function SignInPopup({
   useEffect(() => setMounted(true), [])
 
   if (!open || !mounted) return null
-  const showGithub = providers?.github ?? true
   const showGoogle = providers?.google ?? true
 
   return createPortal(
@@ -234,14 +233,6 @@ export function SignInPopup({
           Please sign in to {action}. Your name and avatar come from your account — no spam.
         </p>
         <div className="mt-5 flex flex-col gap-3">
-          {showGithub && (
-            <button
-              onClick={() => onSignIn('github')}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm text-foreground transition-colors hover:border-foreground/40"
-            >
-              <Github size={16} /> Continue with GitHub
-            </button>
-          )}
           {showGoogle && (
             <button
               onClick={() => onSignIn('google')}

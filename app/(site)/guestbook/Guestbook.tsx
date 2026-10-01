@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import {
-  Loader2, Send, Github, LogOut, ImagePlus, X,
+  Loader2, Send, LogOut, ImagePlus, X,
   Pencil, Trash2, Check, Plus, MessageCircle, Crown, ThumbsUp,
 } from 'lucide-react'
 import { ToastProvider, useToast, ConfirmModal, SignInPopup } from './ui'
@@ -343,12 +343,11 @@ function LimitPopup({ onClose }: { onClose: () => void }) {
 }
 
 interface GuestbookProps {
-  providers?: { github?: boolean; google?: boolean }
+  providers?: { google?: boolean }
 }
 
 const GuestbookInner = ({ providers }: GuestbookProps) => {
-  // Default to showing both if the prop isn't supplied (backwards compatible).
-  const showGithub = providers?.github ?? true
+  // Google is the only supported sign-in provider.
   const showGoogle = providers?.google ?? true
   const { data: session, status } = useSession()
   const myId = session?.user?.id ?? session?.user?.email ?? undefined
@@ -837,7 +836,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
       <SignInPopup
         open={!!signInAction}
         action={signInAction ?? undefined}
-        providers={{ github: showGithub, google: showGoogle }}
+        providers={{ google: showGoogle }}
         onClose={() => setSignInAction(null)}
         onSignIn={(p) => {
           setSignInAction(null)
@@ -971,15 +970,6 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
             Your name and avatar come from your account. No spam, promise.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
-            {showGithub && (
-              <button
-                onClick={() => signIn('github')}
-                data-click-sound
-                className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm text-foreground transition-colors hover:border-foreground/40"
-              >
-                <Github size={15} /> Continue with GitHub
-              </button>
-            )}
             {showGoogle && (
               <button
                 onClick={() => signIn('google')}
@@ -989,7 +979,7 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
                 <GoogleGlyph /> Continue with Google
               </button>
             )}
-            {!showGithub && !showGoogle && (
+            {!showGoogle && (
               <p className="text-xs text-c-red">
                 Sign-in is temporarily unavailable — no login providers are configured.
               </p>

@@ -1,23 +1,13 @@
 import NextAuth from 'next-auth'
-import GitHub from 'next-auth/providers/github'
 import Google from 'next-auth/providers/google'
 
 /**
  * Auth.js (NextAuth v5) — public visitor login (used by the guestbook) and,
  * for a small allowlist of emails, elevated ADMIN access.
- * Providers read credentials from env; if a provider's env vars are missing
- * it's simply not offered.
+ * Only Google sign-in is offered. The provider is registered only when its
+ * credentials are present in the environment.
  */
 const providers = []
-
-if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
-  providers.push(
-    GitHub({
-      clientId: process.env.AUTH_GITHUB_ID,
-      clientSecret: process.env.AUTH_GITHUB_SECRET,
-    })
-  )
-}
 
 if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
   providers.push(
