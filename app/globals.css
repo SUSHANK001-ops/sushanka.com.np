@@ -1144,3 +1144,29 @@ a:hover > .arrow-slide { transform: translateX(3px); }
   .origami-spin { animation: none !important; }
   .group:hover .origami-point { animation: none !important; }
 }
+
+/* ---- Guestbook deep-link highlight ----
+   When arriving from an email link (/guestbook#entry-<id>) we scroll to the
+   entry and briefly glow it so it's obvious which message was replied to. */
+.guestbook-entry {
+  border-radius: 0.9rem;
+  transition: background-color 0.6s ease, box-shadow 0.6s ease;
+}
+.guestbook-entry--highlight {
+  background-color: color-mix(in srgb, var(--link) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--link) 35%, transparent);
+  animation: guestbook-glow 2.4s ease-out;
+}
+@keyframes guestbook-glow {
+  0% {
+    background-color: color-mix(in srgb, var(--link) 22%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--link) 55%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .guestbook-entry--highlight { animation: none; }
+}

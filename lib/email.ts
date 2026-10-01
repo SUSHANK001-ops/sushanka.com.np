@@ -79,9 +79,16 @@ export async function sendNotificationEmail({
     <div style="max-width:520px;margin:0 auto;padding:48px 28px;font-family:${sans};color:#121109;">
       <p style="margin:0 0 20px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6b675d;">Guestbook</p>
 
-      <h1 style="margin:0 0 20px;font-family:${serif};font-weight:500;font-size:26px;line-height:1.2;letter-spacing:-0.01em;color:#121109;">
-        ${escapeHtml(firstName)}, Sushanka replied to your message.
+      <h1 style="margin:0 0 24px;font-family:${serif};font-weight:500;font-size:26px;line-height:1.2;letter-spacing:-0.01em;color:#121109;">
+        Sushanka replied to your message.
       </h1>
+
+      <p style="margin:0 0 20px;font-size:16px;line-height:1.7;color:#121109;">
+        Hi ${escapeHtml(firstName)},
+      </p>
+      <p style="margin:0 0 28px;font-size:15px;line-height:1.7;color:#6b675d;">
+        Thanks for signing the guestbook. I just left you a reply.
+      </p>
 
       ${
         originalMessage

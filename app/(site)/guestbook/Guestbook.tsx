@@ -423,6 +423,28 @@ const GuestbookInner = ({ providers }: GuestbookProps) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [])
 
+  // Deep-link support: when arriving from an email link like
+  // `/guestbook#entry-<id>`, wait for entries to render, then scroll the
+  // target into view and briefly highlight it. Native anchor jumps don't work
+  // because entries load asynchronously after mount.
+  useEffect(() => {
+    if (loading) return
+    const hash = window.location.hash
+    if (!hash.startsWith('#entry-')) return
+
+    const id = hash.slice(1) // drop the leading '#'
+    const el = document.getElementById(id)
+    if (!el) return
+
+    const t = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('guestbook-entry--highlight')
+      window.setTimeout(() => el.classList.remove('guestbook-entry--highlight'), 2400)
+    }, 150)
+
+    return () => window.clearTimeout(t)
+  }, [loading, entries.length])
+
   // Close picker on outside click
   useEffect(() => {
     if (!pickerEntryId) return
