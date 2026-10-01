@@ -12,7 +12,8 @@ export default function GuestbookPage() {
   // button for a provider that isn't registered sends the user to
   // /api/auth/error?error=Configuration.
   const providers = {
-    github: Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET),
+    // GitHub sign-in is disabled. Google is the only supported login.
+    github: false,
     google: Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET),
   }
 

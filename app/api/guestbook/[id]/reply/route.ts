@@ -15,6 +15,20 @@ function sanitize(value: string) {
   return value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()
 }
 
+function isEmail(value?: string | null): value is string {
+  return !!value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
+/**
+ * Figure out which address to notify for an entry. We prefer the explicit
+ * `email` field saved at post time, then fall back to `userId` (which is the
+ * lowercased email for most accounts). Only returns a real email address.
+ */
+function resolveRecipientEmail(entry: { email?: string; userId?: string }) {
+  const candidate = entry.email?.trim() || entry.userId?.trim()
+  return isEmail(candidate) ? candidate!.toLowerCase() : null
+}
+
 /** POST — add a text reply to an entry. Requires an authenticated session. */
 export async function POST(
   req: NextRequest,
@@ -72,17 +86,28 @@ export async function POST(
 
     const saved = entry.replies[entry.replies.length - 1]
 
-    // Send email notification if admin replies to a user (not when admin replies to their own post)
-    const recipientEmail = (entry.email || (entry.userId?.includes('@') ? entry.userId : null))?.trim()
+    // Send email notification when an admin replies to a visitor's entry
+    // (but not when the admin is replying to their own post).
+    const recipientEmail = resolveRecipientEmail(entry)
     const adminEmail = session.user.email?.toLowerCase()
-    if (session.user.isAdmin && recipientEmail && recipientEmail.toLowerCase() !== adminEmail) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'https://sushanka.com.np'
-      await sendNotificationEmail({
+    if (session.user.isAdmin && recipientEmail && recipientEmail !== adminEmail) {
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'https://sushanka.com.np'
+      const result = await sendNotificationEmail({
         to: recipientEmail,
         subject: 'Admin replied to your Guestbook entry!',
         message: `Sushanka has replied to your guestbook entry: "${message}"`,
-        link: `${appUrl}/guestbook#entry-${entry._id}`
+        link: `${appUrl}/guestbook#entry-${entry._id}`,
       })
+      if (!result.sent) {
+        console.warn(
+          `Guestbook reply: notification email to ${recipientEmail} was not sent (${result.reason}).`
+        )
+      }
+    } else if (session.user.isAdmin && !recipientEmail) {
+      console.warn(
+        `Guestbook reply: no valid email on entry ${entry._id}; cannot notify the commenter.`
+      )
     }
 
     return NextResponse.json({

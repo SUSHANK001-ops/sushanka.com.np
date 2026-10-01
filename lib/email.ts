@@ -1,22 +1,16 @@
 import nodemailer from 'nodemailer'
 
-export async function sendNotificationEmail({
-  to,
-  subject,
-  message,
-  link
-}: {
-  to: string
-  subject: string
-  message: string
-  link: string
-}) {
+/**
+ * Shared transporter factory — mirrors the contact-form / OTP verification
+ * setup (Gmail SMTP over SSL on 465). Throws if credentials are missing so the
+ * caller can surface the real reason instead of silently doing nothing.
+ */
+function createTransporter() {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.error('SMTP_USER or SMTP_PASS not set in environment variables. Cannot send email.')
-    return
+    throw new Error('SMTP_USER or SMTP_PASS not set in environment variables')
   }
 
-  const transporter = nodemailer.createTransport({
+  return nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
@@ -25,6 +19,31 @@ export async function sendNotificationEmail({
       pass: process.env.SMTP_PASS,
     },
   })
+}
+
+export async function sendNotificationEmail({
+  to,
+  subject,
+  message,
+  link,
+}: {
+  to: string
+  subject: string
+  message: string
+  link: string
+}): Promise<{ sent: boolean; reason?: string }> {
+  if (!to) {
+    console.warn('sendNotificationEmail: no recipient address provided; skipping.')
+    return { sent: false, reason: 'missing-recipient' }
+  }
+
+  let transporter: nodemailer.Transporter
+  try {
+    transporter = createTransporter()
+  } catch (error) {
+    console.error('sendNotificationEmail: cannot create transporter:', error)
+    return { sent: false, reason: 'smtp-not-configured' }
+  }
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -49,7 +68,9 @@ export async function sendNotificationEmail({
       html,
     })
     console.log(`Notification email sent to ${to}`)
+    return { sent: true }
   } catch (error) {
     console.error('Failed to send notification email:', error)
+    return { sent: false, reason: 'send-failed' }
   }
 }
