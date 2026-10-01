@@ -21,16 +21,36 @@ function createTransporter() {
   })
 }
 
+/** Minimal HTML escaping so user-supplied text can't break the markup. */
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function sendNotificationEmail({
   to,
   subject,
-  message,
   link,
+  recipientName,
+  replyText,
+  originalMessage,
+  message,
 }: {
   to: string
   subject: string
-  message: string
   link: string
+  /** First name (or display name) of the person who left the guestbook entry. */
+  recipientName?: string
+  /** What the admin actually replied with. */
+  replyText?: string
+  /** The visitor's original guestbook message, for context. */
+  originalMessage?: string
+  /** Legacy single-line body; used as a fallback if replyText isn't given. */
+  message?: string
 }): Promise<{ sent: boolean; reason?: string }> {
   if (!to) {
     console.warn('sendNotificationEmail: no recipient address provided; skipping.')
@@ -45,24 +65,56 @@ export async function sendNotificationEmail({
     return { sent: false, reason: 'smtp-not-configured' }
   }
 
+  const firstName = (recipientName ?? '').trim().split(/\s+/)[0] || 'there'
+  const reply = (replyText ?? message ?? '').trim()
+
+  // Fun + professional copy. Warm, a little witty, still polished.
   const html = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <h2 style="color: #333;">New activity on your Guestbook entry!</h2>
-      <hr style="border: none; border-top: 1px solid #eee;" />
-      <p>${message}</p>
-      <div style="margin-top: 24px;">
-        <a href="${link}" style="background-color: #2078f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-          View on Website
+  <div style="margin:0;padding:0;background:#0b1220;">
+    <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#e5e7eb;">
+      <p style="letter-spacing:0.22em;text-transform:uppercase;font-size:11px;color:#7dd3fc;margin:0 0 10px;">Guestbook · you've got a reply</p>
+      <h1 style="margin:0 0 8px;font-size:24px;line-height:1.3;color:#ffffff;">Hey ${escapeHtml(firstName)}, Sushanka wrote back 👋</h1>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#cbd5e1;">
+        You signed the guestbook, dropped some kind words, and then — plot twist — a human actually replied.
+        No bots were harmed in the making of this message.
+      </p>
+
+      ${
+        originalMessage
+          ? `<div style="margin:0 0 14px;padding:14px 16px;border-radius:12px;background:rgba(148,163,184,0.08);border:1px solid rgba(148,163,184,0.15);">
+               <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#94a3b8;">You said</p>
+               <p style="margin:0;font-size:14px;line-height:1.6;color:#e2e8f0;">${escapeHtml(originalMessage)}</p>
+             </div>`
+          : ''
+      }
+
+      <div style="margin:0 0 24px;padding:16px 18px;border-radius:12px;background:rgba(32,120,244,0.12);border:1px solid rgba(125,211,252,0.3);">
+        <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#7dd3fc;">Sushanka replied</p>
+        <p style="margin:0;font-size:15px;line-height:1.65;color:#ffffff;">${escapeHtml(reply) || 'Come see what I said on the site.'}</p>
+      </div>
+
+      <div style="text-align:center;margin:0 0 26px;">
+        <a href="${link}" style="display:inline-block;background:#2078f4;color:#ffffff;padding:12px 26px;text-decoration:none;border-radius:999px;font-weight:600;font-size:14px;">
+          Read it on the site →
         </a>
       </div>
-      <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
-      <p style="font-size: 12px; color: #999;">Sent from Sushanka's Portfolio</p>
+
+      <p style="margin:0 0 4px;font-size:13px;line-height:1.6;color:#94a3b8;">
+        Thanks for stopping by and leaving a mark. It genuinely made my day a little better.
+      </p>
+      <p style="margin:0;font-size:13px;line-height:1.6;color:#cbd5e1;">— Sushanka Lamichhane</p>
+
+      <hr style="border:none;border-top:1px solid rgba(148,163,184,0.15);margin:24px 0 12px;" />
+      <p style="margin:0;font-size:11px;color:#64748b;">
+        You're getting this because you left a message on sushanka.com.np. No subscriptions, no spam — just this one friendly nudge.
+      </p>
     </div>
+  </div>
   `
 
   try {
     await transporter.sendMail({
-      from: `"Sushanka Portfolio" <${process.env.SMTP_USER}>`,
+      from: `"Sushanka Lamichhane" <${process.env.SMTP_USER}>`,
       to,
       subject: `[Portfolio] ${subject}`,
       html,
