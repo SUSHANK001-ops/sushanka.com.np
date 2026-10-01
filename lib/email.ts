@@ -68,45 +68,40 @@ export async function sendNotificationEmail({
   const firstName = (recipientName ?? '').trim().split(/\s+/)[0] || 'there'
   const reply = (replyText ?? message ?? '').trim()
 
-  // Fun + professional copy. Warm, a little witty, still polished.
+  // Clean, minimal, editorial — matching the site: warm paper, ink, hairlines,
+  // a serif heading and a quiet green link. No emoji, no gimmicks.
+  const serif = "Georgia, 'Iowan Old Style', 'Times New Roman', serif"
+  const sans =
+    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+
   const html = `
-  <div style="margin:0;padding:0;background:#0b1220;">
-    <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#e5e7eb;">
-      <p style="letter-spacing:0.22em;text-transform:uppercase;font-size:11px;color:#7dd3fc;margin:0 0 10px;">Guestbook · you've got a reply</p>
-      <h1 style="margin:0 0 8px;font-size:24px;line-height:1.3;color:#ffffff;">Hey ${escapeHtml(firstName)}, Sushanka wrote back 👋</h1>
-      <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#cbd5e1;">
-        You signed the guestbook, dropped some kind words, and then — plot twist — a human actually replied.
-        No bots were harmed in the making of this message.
-      </p>
+  <div style="margin:0;padding:0;background:#f4f3f0;">
+    <div style="max-width:520px;margin:0 auto;padding:48px 28px;font-family:${sans};color:#121109;">
+      <p style="margin:0 0 20px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6b675d;">Guestbook</p>
+
+      <h1 style="margin:0 0 20px;font-family:${serif};font-weight:500;font-size:26px;line-height:1.2;letter-spacing:-0.01em;color:#121109;">
+        ${escapeHtml(firstName)}, Sushanka replied to your message.
+      </h1>
 
       ${
         originalMessage
-          ? `<div style="margin:0 0 14px;padding:14px 16px;border-radius:12px;background:rgba(148,163,184,0.08);border:1px solid rgba(148,163,184,0.15);">
-               <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#94a3b8;">You said</p>
-               <p style="margin:0;font-size:14px;line-height:1.6;color:#e2e8f0;">${escapeHtml(originalMessage)}</p>
-             </div>`
+          ? `<p style="margin:0 0 6px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6b675d;">Your message</p>
+             <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#6b675d;">${escapeHtml(originalMessage)}</p>`
           : ''
       }
 
-      <div style="margin:0 0 24px;padding:16px 18px;border-radius:12px;background:rgba(32,120,244,0.12);border:1px solid rgba(125,211,252,0.3);">
-        <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#7dd3fc;">Sushanka replied</p>
-        <p style="margin:0;font-size:15px;line-height:1.65;color:#ffffff;">${escapeHtml(reply) || 'Come see what I said on the site.'}</p>
-      </div>
+      <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6b675d;">The reply</p>
+      <p style="margin:0 0 32px;font-size:16px;line-height:1.7;color:#121109;">${escapeHtml(reply) || 'See the reply on the site.'}</p>
 
-      <div style="text-align:center;margin:0 0 26px;">
-        <a href="${link}" style="display:inline-block;background:#2078f4;color:#ffffff;padding:12px 26px;text-decoration:none;border-radius:999px;font-weight:600;font-size:14px;">
-          Read it on the site →
+      <p style="margin:0 0 36px;">
+        <a href="${link}" style="color:#256b47;text-decoration:none;font-size:15px;border-bottom:1px solid #256b47;padding-bottom:2px;">
+          View on the site &rarr;
         </a>
-      </div>
-
-      <p style="margin:0 0 4px;font-size:13px;line-height:1.6;color:#94a3b8;">
-        Thanks for stopping by and leaving a mark. It genuinely made my day a little better.
       </p>
-      <p style="margin:0;font-size:13px;line-height:1.6;color:#cbd5e1;">— Sushanka Lamichhane</p>
 
-      <hr style="border:none;border-top:1px solid rgba(148,163,184,0.15);margin:24px 0 12px;" />
-      <p style="margin:0;font-size:11px;color:#64748b;">
-        You're getting this because you left a message on sushanka.com.np. No subscriptions, no spam — just this one friendly nudge.
+      <hr style="border:none;border-top:1px solid #dddad3;margin:0 0 16px;" />
+      <p style="margin:0;font-size:12px;line-height:1.6;color:#6b675d;">
+        Sent because you signed the guestbook at sushanka.com.np.
       </p>
     </div>
   </div>
@@ -116,7 +111,7 @@ export async function sendNotificationEmail({
     await transporter.sendMail({
       from: `"Sushanka Lamichhane" <${process.env.SMTP_USER}>`,
       to,
-      subject: `[Portfolio] ${subject}`,
+      subject,
       html,
     })
     console.log(`Notification email sent to ${to}`)

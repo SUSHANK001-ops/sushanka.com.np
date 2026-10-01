@@ -95,7 +95,7 @@ export async function POST(
         process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'https://sushanka.com.np'
       const result = await sendNotificationEmail({
         to: recipientEmail,
-        subject: 'Sushanka replied to your guestbook message 👋',
+        subject: 'Sushanka replied to your guestbook message',
         recipientName: entry.name,
         replyText: message,
         originalMessage: entry.message,
