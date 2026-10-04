@@ -207,11 +207,11 @@ GET  /api/users        200  11ms
 export const projects: Project[] = [
   {
     number: '01',
-    title: 'DevOps Project',
-    tagline: 'End-to-end DevOps pipeline with CI/CD and automation.',
+    title: 'Zomato Clone — DevSecOps CI/CD Pipeline',
+    tagline: 'End-to-end DevSecOps pipeline deploying a React app on AWS EC2.',
     description:
-      'A hands-on DevOps project showcasing CI/CD pipelines, containerization, and infrastructure automation. Covers build, test, and deployment workflows with industry-standard tooling.',
-    builtWith: ['Docker', 'Jenkins', 'GitHub Actions', 'Terraform', 'Ansible'],
+      'An enterprise-ready DevSecOps CI/CD pipeline that securely builds, analyzes, scans, containerizes, and deploys a Zomato Clone React app on AWS EC2. Jenkins declarative pipeline runs SonarQube SAST and quality gate, Trivy filesystem and image vulnerability scans, a multi-stage Docker build (Node 20 → Nginx Alpine), a push to Docker Hub, and automated container deployment on port 3000.',
+    builtWith: ['Jenkins', 'Docker', 'SonarQube', 'Trivy', 'Nginx', 'AWS EC2'],
     githubUrl: 'https://github.com/SUSHANK001-ops/Devops_Projects/tree/main/Project-1',
   },
   {
