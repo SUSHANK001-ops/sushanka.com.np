@@ -53,22 +53,6 @@ const ProjectCard = ({ project }: { project: Project }) => {
           </span>
         ))}
       </div>
-
-      {project.deployedOn && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 font-mono text-[10px] uppercase tracking-widest text-accent">
-            Deployed:
-          </span>
-          {project.deployedOn.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-accent/30 bg-accent/5 px-2.5 py-0.5 font-mono text-xs text-accent"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
     </article>
   )
 }

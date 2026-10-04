@@ -207,13 +207,12 @@ GET  /api/users        200  11ms
 export const projects: Project[] = [
   {
     number: '01',
-    title: 'VProfile DevOps Project',
-    tagline: 'Multi-tier app on AWS with a full CI/CD pipeline.',
+    title: 'DevOps Project',
+    tagline: 'End-to-end DevOps pipeline with CI/CD and automation.',
     description:
-      'Multi-tier application deployed on AWS using EC2, RDS, ELB, S3, and Route 53. CI/CD pipeline with Jenkins and GitHub Actions. Containerized with Docker, orchestrated with Kubernetes, infrastructure managed with Terraform and Ansible.',
-    builtWith: ['Java', 'MySQL', 'RabbitMQ', 'Memcached', 'Nginx'],
-    deployedOn: ['AWS EC2', 'RDS', 'ELB', 'S3', 'Route 53'],
-    githubUrl: 'https://github.com/SUSHANK001-ops',
+      'A hands-on DevOps project showcasing CI/CD pipelines, containerization, and infrastructure automation. Covers build, test, and deployment workflows with industry-standard tooling.',
+    builtWith: ['Docker', 'Jenkins', 'GitHub Actions', 'Terraform', 'Ansible'],
+    githubUrl: 'https://github.com/SUSHANK001-ops/Devops_Projects/tree/main/Project-1',
   },
   {
     number: '02',
@@ -222,7 +221,6 @@ export const projects: Project[] = [
     description:
       'A real-time chatting application with instant messaging, user authentication, and a sleek conversational UI. Built as a full-stack project with modern web technologies.',
     builtWith: ['MERN Stack', 'Socket.io', 'Real-time', 'Authentication'],
-    deployedOn: ['DigitalOcean', 'Linux VPS', 'Nginx'],
     liveUrl: 'https://senchat.sushanka.com.np',
   },
   {
@@ -232,17 +230,16 @@ export const projects: Project[] = [
     description:
       'A full-stack file sharing web app that allows users to upload files up to 100MB and generate public download links with QR code sharing and automatic expiration. Built with a responsive UI and cloud-based file storage.',
     builtWith: ['Next.js', 'Express', 'PostgreSQL', 'Cloudinary'],
-    deployedOn: ['AWS EC2', 'S3', 'IAM'],
     liveUrl: 'https://urlshare.sushanka.com.np',
     githubUrl: 'https://github.com/SUSHANK001-ops/UrlShare.git',
   },
   {
     number: '04',
     title: 'SenBlog',
+    tagline: 'Full-stack blogging platform with rich editing.',
     description:
       'A full-stack blogging platform with rich text editing, user dashboards, and content management. Features responsive design, authentication, and a clean reading experience.',
     builtWith: ['MongoDB', 'Express', 'React', 'Node.js'],
-    deployedOn: ['Linux VPS', 'Nginx', 'SSL'],
     liveUrl: 'https://senblog.vercel.app/',
   },
   {
@@ -339,4 +336,13 @@ export const latestBlogFallback = {
 export const nepaliQuote = {
   text: 'विद्या ददाति विनयम्',
   translation: 'Knowledge gives humility — Hitopadesha',
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pull-quote shown after the blog section on the homepage           */
+/* ------------------------------------------------------------------ */
+
+export const blogQuote = {
+  lines: ['sad birds still fly'],
+  attribution: '',
 }
