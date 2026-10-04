@@ -23,8 +23,7 @@ export default async function ManifestPage() {
       <h1 className="display-serif text-4xl text-foreground md:text-5xl">Manifest List</h1>
       <p className="mt-4 text-[0.975rem] leading-relaxed text-muted">
         A living list of things I&apos;m working toward — goals, milestones, and
-        dreams. It syncs straight from my Notion, so only I check items off; it
-        stays read-only here.
+        dreams.
       </p>
 
       {hasContent ? (

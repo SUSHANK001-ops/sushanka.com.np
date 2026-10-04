@@ -44,19 +44,23 @@ function SponsorModal({
   item: TodoItem | null
   onClose: () => void
 }) {
+  const open = Boolean(item)
+
+  // Lock page scroll + wire Esc ONLY while the modal is open, and always
+  // restore scroll on close so the page never gets stuck.
   useEffect(() => {
+    if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      document.body.style.overflow = prev
     }
-  }, [onClose])
+  }, [open, onClose])
 
   if (!item) return null
-
-  const itemText = item.spans.map((s) => s.text).join('')
 
   return (
     <div
@@ -66,57 +70,34 @@ function SponsorModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="manifest-pop relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+        className="manifest-pop relative w-full max-w-xs rounded-2xl border border-border bg-surface p-6 text-center shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Accent gradient header */}
-        <div className="relative bg-gradient-to-br from-accent/20 via-accent/5 to-transparent px-6 pt-7 pb-5">
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-4 top-4 rounded-full p-1 text-muted transition-colors hover:bg-foreground/10 hover:text-foreground"
-          >
-            <X size={18} />
-          </button>
-          <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent/15 text-accent">
-            <Heart size={20} className="fill-current" />
-          </div>
-          <h3 className="serif-title text-xl text-foreground">Want to help make this happen?</h3>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-3 top-3 rounded-full p-1 text-muted transition-colors hover:bg-foreground/10 hover:text-foreground"
+        >
+          <X size={16} />
+        </button>
+
+        <div className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-accent">
+          <Heart size={18} className="fill-current" />
         </div>
 
-        <div className="px-6 py-5">
-          <p className="text-sm leading-relaxed text-muted">
-            These are items on my life manifest — things I&apos;m working toward,
-            and only I check them off from my own Notion.
-          </p>
-          <div className="mt-4 rounded-xl border border-border bg-background/40 px-4 py-3">
-            <p className="font-mono text-[0.7rem] uppercase tracking-widest text-accent">
-              You picked
-            </p>
-            <p className="mt-1 text-sm font-medium text-foreground">{itemText}</p>
-          </div>
-          <p className="mt-4 text-sm leading-relaxed text-muted">
-            If you&apos;d like to sponsor or support any of these, I&apos;d love to
-            hear from you — supporters get a spot on a dedicated gratitude page.
-          </p>
+        <h3 className="serif-title text-lg text-foreground">Want to sponsor this?</h3>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Reach out and I&apos;ll add you to my gratitude page.
+        </p>
 
-          <div className="mt-6 flex items-center gap-3">
-            <Link
-              href="/contact"
-              data-click-sound
-              className="group inline-flex items-center gap-1.5 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-background transition-transform hover:scale-[1.02]"
-            >
-              Get in touch
-              <ArrowUpRight size={15} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </Link>
-            <button
-              onClick={onClose}
-              className="text-sm text-muted transition-colors hover:text-foreground"
-            >
-              Maybe later
-            </button>
-          </div>
-        </div>
+        <Link
+          href="/contact"
+          data-click-sound
+          className="group mt-5 inline-flex items-center gap-1.5 rounded-full bg-accent px-5 py-2 text-sm font-medium text-background transition-transform hover:scale-[1.02]"
+        >
+          Contact me
+          <ArrowUpRight size={14} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        </Link>
       </div>
     </div>
   )
