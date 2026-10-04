@@ -150,7 +150,7 @@ const ManifestView = ({ content }: { content: ManifestContent }) => {
         <section className="mt-14">
           <div className="mb-5 flex items-center gap-2">
             <Sparkles size={18} className="text-accent" />
-            <h2 className="serif-title serif-section !mb-0">Manifest List</h2>
+            <h2 className="serif-title serif-section !mb-0">Bucket List</h2>
           </div>
 
           <ul ref={todosRef} className="divide-y divide-border/60 border-y border-border/60">
