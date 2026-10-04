@@ -38,7 +38,6 @@ export default function HomePage() {
       <Services />
       <Divider />
       <LatestBlog />
-      <Divider />
       <BlogQuote />
       <Divider />
       <Experience />
