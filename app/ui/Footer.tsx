@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   User, LayoutDashboard, FileText, Sparkles,
-  MessageSquare, Mail, BookOpen, Wrench,
+  MessageSquare, Mail, BookOpen, Layers,
   FolderGit2, Image as ImageIcon, MessageCircle, BarChart3,
   Instagram, Github, Linkedin, Rss,
 } from 'lucide-react'
@@ -30,7 +30,7 @@ const columns: FLink[][] = [
     { label: 'Guestbook', href: '/guestbook', icon: MessageSquare },
     { label: 'Contact', href: '/contact', icon: Mail },
     { label: 'Blog', href: '/blog', icon: BookOpen },
-    { label: 'Projects', href: '/projects', icon: Wrench },
+    { label: 'Uses', href: '/uses', icon: Layers },
   ],
   [
     { label: 'Projects', href: '/projects', icon: FolderGit2 },
