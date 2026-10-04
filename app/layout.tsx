@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, JetBrains_Mono, Noto_Sans_Devanagari, Fraunces } from "next/font/google";
+import { Geist, JetBrains_Mono, Noto_Sans_Devanagari, Fraunces, Caveat } from "next/font/google";
 import "./globals.css";
 import Providers from "./ui/Providers";
 import { themeInitScript } from "./ui/theme/ThemeProvider";
@@ -23,6 +23,13 @@ const jetbrainsMono = JetBrains_Mono({
 const notoSansDevanagari = Noto_Sans_Devanagari({
   variable: "--font-devanagari",
   subsets: ["devanagari"],
+  weight: ["400", "500", "600", "700"],
+});
+
+// Handwritten marker face for the homepage pull-quote.
+const caveat = Caveat({
+  variable: "--font-handwritten",
+  subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 export const metadata: Metadata = {
@@ -112,7 +119,7 @@ export default function RootLayout({
       </head>
 
       <body
-        className={`${geist.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${notoSansDevanagari.variable} antialiased`}
+        className={`${geist.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${notoSansDevanagari.variable} ${caveat.variable} antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

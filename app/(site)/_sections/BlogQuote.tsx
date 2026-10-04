@@ -1,32 +1,28 @@
 import React from 'react'
-import { Quote } from 'lucide-react'
 import { blogQuote } from '@/data/config'
 
 /**
- * Calm editorial pull-quote, shown just after the "Latest from the blog"
- * section on the homepage. Content lives in data/config (blogQuote).
+ * Handwritten pull-quote shown just after the "Latest from the blog" section.
+ * No background — centered handwritten lines wrapped in quote marks, framed by
+ * thin dashed rules top and bottom. Content lives in data/config (blogQuote).
  */
 const BlogQuote = () => {
+  const lastIndex = blogQuote.lines.length - 1
+
   return (
     <div className="editorial-page">
-      <figure className="relative rounded-2xl border border-border bg-foreground/[0.015] px-6 py-8 sm:px-10 sm:py-10">
-        <Quote
-          size={22}
-          className="absolute left-5 top-6 text-accent/40 sm:left-8"
-          aria-hidden
-        />
-        <blockquote className="pl-8 sm:pl-10">
+      <figure className="border-y border-dashed border-border/70 py-10 text-center">
+        <blockquote className="font-handwritten text-2xl leading-relaxed text-foreground/85 sm:text-3xl">
           {blogQuote.lines.map((line, i) => (
-            <p
-              key={i}
-              className="serif-title text-xl leading-relaxed text-foreground/90 sm:text-2xl"
-            >
+            <p key={i}>
+              {i === 0 ? '\u201C' : ''}
               {line}
+              {i === lastIndex ? '\u201D' : ''}
             </p>
           ))}
         </blockquote>
         {blogQuote.attribution && (
-          <figcaption className="mt-4 pl-8 font-mono text-xs text-muted sm:pl-10">
+          <figcaption className="font-handwritten mt-5 text-lg text-muted sm:text-xl">
             — {blogQuote.attribution}
           </figcaption>
         )}

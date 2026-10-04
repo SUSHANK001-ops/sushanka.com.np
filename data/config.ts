@@ -343,6 +343,11 @@ export const nepaliQuote = {
 /* ------------------------------------------------------------------ */
 
 export const blogQuote = {
-  lines: ['sad birds still fly'],
-  attribution: '',
+  lines: [
+    'Do not get upset with',
+    'people or situations.',
+    'both are powerless',
+    'without your reaction.',
+  ],
+  attribution: 'Buddha',
 }

@@ -91,6 +91,7 @@ body,
   --font-serif: var(--font-serif), "Iowan Old Style", Georgia, serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", monospace;
   --font-devanagari: var(--font-devanagari), sans-serif;
+  --font-handwritten: var(--font-handwritten), "Comic Sans MS", cursive;
 }
 
 html,
@@ -119,6 +120,10 @@ body {
 
 .font-devanagari {
   font-family: var(--font-devanagari), sans-serif;
+}
+
+.font-handwritten {
+  font-family: var(--font-handwritten), "Comic Sans MS", cursive;
 }
 
 /* ---- Scrollbar ---- */
