@@ -6,7 +6,7 @@ import ManifestView from './ManifestView'
 export const metadata: Metadata = {
   title: 'Manifest · Sushanka Lamichhane',
   description:
-    'The things I read every morning and the goals I am working toward — a living manifest, synced from Notion.',
+    'A living bucket list of things I am working toward — goals, milestones, and dreams. Synced from Notion. Open to sponsors.',
 }
 
 // Refresh at most every 5 minutes so Notion edits appear without a rebuild.
@@ -19,11 +19,12 @@ export default async function ManifestPage() {
 
   return (
     <div className="editorial-page pt-32 pb-16 md:pt-36">
-      <p className="eyebrow eyebrow-dot mb-3">Living document</p>
-      <h1 className="display-serif text-4xl text-foreground md:text-5xl">Manifest</h1>
+      <p className="eyebrow eyebrow-dot mb-3">Life bucket list</p>
+      <h1 className="display-serif text-4xl text-foreground md:text-5xl">Manifest List</h1>
       <p className="mt-4 text-[0.975rem] leading-relaxed text-muted">
-        Principles I read daily and the goals I am chasing. Synced live from my
-        Notion so it stays honest.
+        A living list of things I&apos;m working toward — goals, milestones, and
+        dreams. It syncs straight from my Notion, so only I check items off; it
+        stays read-only here.
       </p>
 
       {hasContent ? (
