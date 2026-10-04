@@ -24,7 +24,7 @@ const columns: FLink[][] = [
     { label: 'About', href: '/about', icon: User },
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Certifications', href: '/certifications', icon: FileText },
-    { label: 'Home', href: '/', icon: Sparkles },
+    { label: 'Manifest', href: '/manifest', icon: Sparkles },
   ],
   [
     { label: 'Guestbook', href: '/guestbook', icon: MessageSquare },
