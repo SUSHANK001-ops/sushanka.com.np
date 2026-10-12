@@ -14,15 +14,14 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 export const THEME_STORAGE_KEY = 'portfolio-theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Initialise from the attribute the no-flash script already set on <html>.
-  const [theme, setThemeState] = useState<Theme>('light')
+  // Initialise from the attribute the no-flash script already set on <html>,
+  // read lazily so there's no post-mount setState just to reconcile the DOM.
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof document === 'undefined') return 'light'
+    return (document.documentElement.getAttribute('data-theme') as Theme | null) ?? 'light'
+  })
 
   useEffect(() => {
-    // Sync React state with whatever the no-flash script already applied.
-    const current =
-      (document.documentElement.getAttribute('data-theme') as Theme | null) ?? 'light'
-    setThemeState(current)
-
     // While the user has NOT made an explicit choice, follow the OS theme live.
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
     const onSystemChange = (e: MediaQueryListEvent) => {
