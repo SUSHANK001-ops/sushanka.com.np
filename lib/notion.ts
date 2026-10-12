@@ -79,8 +79,10 @@ export interface Book {
   url?: string
   /** Page cover (external.url | file.url) or a cover/image property. */
   cover?: string
-  /** Normalized to a short display string (e.g. "4" or a star glyph run). */
+  /** Raw display string (e.g. "★★★★" or "4"), shown as-is in the UI. */
   rating?: string
+  /** Genre tags (e.g. ["nonfiction self-help"]), optional. */
+  genres?: string[]
 }
 
 export interface BooksContent {
@@ -340,15 +342,43 @@ async function databaseQuery(
   return results
 }
 
-/** Normalize an arbitrary Notion status/select value to our small union. */
+/**
+ * Normalize an arbitrary Notion status/select value to our small union.
+ * Handles the owner's exact `status` option values — "Not started" (-> want),
+ * "In progress" (-> reading), "Done" (-> read) — plus generic substrings as a
+ * fallback for other schemas.
+ */
 function normalizeStatus(raw: string | undefined): BookStatus {
-  const s = (raw ?? '').toLowerCase()
+  const s = (raw ?? '').toLowerCase().trim()
   if (!s) return 'other'
-  // Test `want` BEFORE `read` so "want to read" isn't swallowed by the read branch.
-  if (/want|to[\s-]?read|wishlist|backlog/.test(s)) return 'want'
-  if (/currently|reading/.test(s)) return 'reading'
+
+  // Exact option values from the owner's "Status" property.
+  if (s === 'in progress') return 'reading'
+  if (s === 'done') return 'read'
+  if (s === 'not started') return 'want'
+
+  // Generic substring fallback (order matters: `want` before `read` so
+  // "want to read" isn't swallowed by the read branch).
+  if (/not started|want|to[\s-]?read|wishlist|backlog/.test(s)) return 'want'
+  if (/in progress|currently|reading/.test(s)) return 'reading'
   if (/read|done|finished|complete/.test(s)) return 'read'
   return 'other'
+}
+
+/** Join a Notion select/multi_select property's names into a trimmed string. */
+function selectText(prop: any): string {
+  if (!prop) return ''
+  if (prop.type === 'select') return (prop.select?.name ?? '').trim()
+  if (prop.type === 'multi_select') {
+    return (prop.multi_select ?? [])
+      .map((o: any) => o?.name ?? '')
+      .filter(Boolean)
+      .join(', ')
+      .trim()
+  }
+  if (prop.type === 'rich_text') return spansToPlain(parseRich(prop.rich_text ?? [])).trim()
+  if (prop.type === 'title') return spansToPlain(parseRich(prop.title ?? [])).trim()
+  return ''
 }
 
 /** Parse a single database result (page object) into a {@link Book}, or null. */
@@ -375,34 +405,45 @@ function parseBook(result: any): Book | null {
     : undefined
   const status = normalizeStatus(rawStatus)
 
-  // Author (optional): a rich_text property named like /author/i.
+  // Author (optional): the "Author Name" property — select / multi_select /
+  // rich_text / title — matched by name /author/i.
   const authorEntry = entries.find(
-    ([name, p]) => p?.type === 'rich_text' && /author/i.test(name),
+    ([name, p]) =>
+      /author/i.test(name) &&
+      (p?.type === 'select' ||
+        p?.type === 'multi_select' ||
+        p?.type === 'rich_text' ||
+        p?.type === 'title'),
   )
-  const author = authorEntry
-    ? spansToPlain(parseRich(authorEntry[1]?.rich_text ?? [])).trim() || undefined
-    : undefined
+  const author = authorEntry ? selectText(authorEntry[1]) || undefined : undefined
 
-  // Rating (optional): a number property named like /rating|stars?/i; else a
-  // select/rich_text with the same name whose text carries star glyphs.
+  // Rating (optional): the "Rating" property. Stars are stored as a select /
+  // multi_select / rich_text string (e.g. "★★★★"); a plain number also works.
   let rating: string | undefined
-  const numberRating = entries.find(
-    ([name, p]) => p?.type === 'number' && /rating|stars?/i.test(name),
+  const ratingEntry = entries.find(([name]) => /rating|stars?/i.test(name))
+  if (ratingEntry) {
+    const p = ratingEntry[1]
+    if (p?.type === 'number' && typeof p.number === 'number') {
+      rating = String(p.number)
+    } else {
+      const val = selectText(p)
+      if (val) rating = val
+    }
+  }
+
+  // Genre (optional): the "Genre" property — select / multi_select — as tags.
+  let genres: string[] | undefined
+  const genreEntry = entries.find(
+    ([name, p]) =>
+      /genre/i.test(name) && (p?.type === 'select' || p?.type === 'multi_select'),
   )
-  if (numberRating && typeof numberRating[1]?.number === 'number') {
-    rating = String(numberRating[1].number)
-  } else {
-    const textRating = entries.find(
-      ([name, p]) =>
-        /rating|stars?/i.test(name) &&
-        (p?.type === 'select' || p?.type === 'rich_text'),
-    )
-    if (textRating) {
-      const val =
-        textRating[1]?.type === 'select'
-          ? textRating[1]?.select?.name
-          : spansToPlain(parseRich(textRating[1]?.rich_text ?? []))
-      if (val && /[★☆⭐]/.test(val)) rating = val.trim()
+  if (genreEntry) {
+    const p = genreEntry[1]
+    if (p?.type === 'multi_select') {
+      const names = (p.multi_select ?? []).map((o: any) => o?.name).filter(Boolean)
+      if (names.length) genres = names
+    } else if (p?.select?.name) {
+      genres = [p.select.name]
     }
   }
 
@@ -432,6 +473,7 @@ function parseBook(result: any): Book | null {
     url: result?.url ?? undefined,
     cover,
     rating,
+    genres,
   }
 }
 

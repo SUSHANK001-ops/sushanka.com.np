@@ -79,6 +79,18 @@ function BookCard({ book }: { book: Book }) {
             </span>
           )}
         </div>
+        {book.genres && book.genres.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {book.genres.map((genre) => (
+              <span
+                key={genre}
+                className="rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] text-foreground/60"
+              >
+                {genre}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       {book.url && (
         <ArrowUpRight

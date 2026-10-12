@@ -5,7 +5,7 @@ import Image from 'next/image'
 import {
   User, Wrench, FileText, Sparkles,
   MessageSquare, Mail, BookOpen, Layers,
-  FolderGit2, Image as ImageIcon, MessageCircle, BarChart3,
+  FolderGit2, MessageCircle, BarChart3,
   Instagram, Github, Linkedin, Rss,
 } from 'lucide-react'
 import { identity, nepaliQuote } from '@/data/config'
@@ -25,7 +25,6 @@ const columns: FLink[][] = [
     { label: 'Uses', href: '/uses', icon: Layers },
     { label: 'Certifications', href: '/certifications', icon: FileText },
     { label: 'Manifest', href: '/manifest', icon: Sparkles },
-    { label: 'Books', href: '/books', icon: BookOpen },
   ],
   [
     { label: 'Guestbook', href: '/guestbook', icon: MessageSquare },
@@ -35,7 +34,7 @@ const columns: FLink[][] = [
   ],
   [
     { label: 'Projects', href: '/projects', icon: FolderGit2 },
-    { label: 'GitHub', href: 'https://github.com/SUSHANK001-ops', icon: ImageIcon, external: true },
+    { label: 'Books', href: '/books', icon: BookOpen },
     { label: 'Feedback', href: '/guestbook', icon: MessageCircle },
     { label: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   ],
