@@ -18,9 +18,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light')
 
   useEffect(() => {
+    // Sync React state with whatever the no-flash script already applied.
     const current =
       (document.documentElement.getAttribute('data-theme') as Theme | null) ?? 'light'
     setThemeState(current)
+
+    // While the user has NOT made an explicit choice, follow the OS theme live.
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const onSystemChange = (e: MediaQueryListEvent) => {
+      let saved: string | null = null
+      try {
+        saved = localStorage.getItem(THEME_STORAGE_KEY)
+      } catch {
+        /* ignore */
+      }
+      if (saved !== 'light' && saved !== 'dark') {
+        const next: Theme = e.matches ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', next)
+        setThemeState(next)
+      }
+    }
+    mql.addEventListener('change', onSystemChange)
+    return () => mql.removeEventListener('change', onSystemChange)
   }, [])
 
   const applyTheme = useCallback((t: Theme) => {
@@ -51,8 +70,13 @@ export function useTheme() {
 }
 
 /**
- * Inline script injected in <head> before paint to set data-theme from
- * localStorage / system preference — prevents a light/dark flash on load.
+ * Inline script injected in <head> before paint to set data-theme — prevents
+ * a light/dark flash on load.
+ *
+ * Resolution order:
+ *   1. A saved choice in localStorage (the user picked it before — remember it).
+ *   2. Otherwise the OS/browser system preference (prefers-color-scheme).
+ *   3. Falling back to light if neither is available.
  */
 export const themeInitScript = `
 (function () {
@@ -60,7 +84,9 @@ export const themeInitScript = `
     var k = '${THEME_STORAGE_KEY}';
     var t = localStorage.getItem(k);
     if (t !== 'light' && t !== 'dark') {
-      t = 'light';
+      t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        ? 'dark'
+        : 'light';
     }
     document.documentElement.setAttribute('data-theme', t);
   } catch (e) {

@@ -6,6 +6,7 @@ import { Music } from 'lucide-react'
 interface SpotifyState {
   configured: boolean
   isPlaying: boolean
+  premiumRequired?: boolean
   track?: { name: string; artist: string; albumArt: string | null; url: string | null }
 }
 
@@ -67,10 +68,17 @@ const SpotifyCard = () => {
         </a>
       ) : (
         <div>
-          <p className="text-sm text-muted">Not currently playing</p>
+          <p className="text-sm text-muted">
+            {state?.premiumRequired ? 'Live track hidden' : 'Not currently playing'}
+          </p>
           {state && !state.configured && (
             <p className="mt-2 font-mono text-[10px] text-muted/70">
               Spotify not configured
+            </p>
+          )}
+          {state?.premiumRequired && (
+            <p className="mt-2 font-mono text-[10px] text-muted/70">
+              Now-playing needs Spotify Premium
             </p>
           )}
         </div>

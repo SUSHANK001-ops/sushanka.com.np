@@ -114,6 +114,13 @@ export async function GET() {
       }
     }
 
+    // Spotify's player endpoints require the app owner's account to have
+    // Premium; a free account gets 403 here. Surface that distinctly so the
+    // card can show an honest message instead of a misleading "not playing".
+    if (nowRes.status === 403) {
+      return NextResponse.json({ configured: true, isPlaying: false, premiumRequired: true })
+    }
+
     // Fall back to the most recently played track.
     const recentRes = await fetch(RECENT_URL, {
       headers: { Authorization: `Bearer ${token}` },
@@ -129,6 +136,9 @@ export async function GET() {
           track: mapTrack(item),
         })
       }
+    }
+    if (recentRes.status === 403) {
+      return NextResponse.json({ configured: true, isPlaying: false, premiumRequired: true })
     }
 
     return NextResponse.json({ configured: true, isPlaying: false })
