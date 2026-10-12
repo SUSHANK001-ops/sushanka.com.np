@@ -63,6 +63,35 @@ export interface ManifestContent {
   lastEdited?: string
 }
 
+/* ------------------------------------------------------------------ */
+/*  Books (reading list) shapes — powers the /books page.              */
+/* ------------------------------------------------------------------ */
+
+export type BookStatus = 'reading' | 'read' | 'want' | 'other'
+
+/** A single book from the Notion reading-list database. */
+export interface Book {
+  id: string
+  title: string
+  author?: string
+  status: BookStatus
+  /** result.url — the Notion page, opened in a new tab. */
+  url?: string
+  /** Page cover (external.url | file.url) or a cover/image property. */
+  cover?: string
+  /** Normalized to a short display string (e.g. "4" or a star glyph run). */
+  rating?: string
+}
+
+export interface BooksContent {
+  configured: boolean
+  reading: Book[]
+  read: Book[]
+  want?: Book[]
+  /** Most-recent result.last_edited_time, as a "last synced" hint. */
+  lastEdited?: string
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function parseRich(rich: any[]): RichSpan[] {
@@ -264,4 +293,190 @@ export async function getManifestContent(): Promise<ManifestContent> {
   const lastEdited = await fetchPageMeta(NOTION_MANIFEST_PAGE_ID, NOTION_TOKEN)
 
   return { configured: true, intro, todos, goals, lastEdited }
+}
+
+/* ============================================================================
+ *  Books — reads a Notion DATABASE (not a page) and parses it into a tidy,
+ *  render-friendly shape for the /books page.
+ * ============================================================================
+ *
+ *  SETUP (one-time):
+ *  1. Reuse the same internal integration as the Manifest page (NOTION_TOKEN).
+ *  2. Open the Books database in Notion -> ... -> Connections -> add the
+ *     integration so it can read the database.
+ *  3. Copy the 32-char database ID from the DB URL (before the `?v=`).
+ *  4. Add to your environment (.env):  NOTION_BOOKS_DB_ID="..."
+ *
+ *  Property names/types are matched defensively (by type + name regex) because
+ *  the owner's exact schema is unknown. Any book whose status doesn't match a
+ *  known bucket is dropped from the three lists.
+ * ========================================================================== */
+
+/** Query one page of a Notion database, collecting all results via pagination. */
+async function databaseQuery(
+  dbId: string,
+  token: string,
+  startCursor?: string,
+): Promise<any[]> {
+  const res = await fetch(`${API_BASE}/databases/${dbId}/query`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Notion-Version': NOTION_VERSION,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      page_size: 100,
+      ...(startCursor ? { start_cursor: startCursor } : {}),
+    }),
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`Notion database query ${res.status}`)
+  const data = await res.json()
+  const results: any[] = data?.results ?? []
+  if (data?.has_more && data?.next_cursor) {
+    results.push(...(await databaseQuery(dbId, token, data.next_cursor)))
+  }
+  return results
+}
+
+/** Normalize an arbitrary Notion status/select value to our small union. */
+function normalizeStatus(raw: string | undefined): BookStatus {
+  const s = (raw ?? '').toLowerCase()
+  if (!s) return 'other'
+  // Test `want` BEFORE `read` so "want to read" isn't swallowed by the read branch.
+  if (/want|to[\s-]?read|wishlist|backlog/.test(s)) return 'want'
+  if (/currently|reading/.test(s)) return 'reading'
+  if (/read|done|finished|complete/.test(s)) return 'read'
+  return 'other'
+}
+
+/** Parse a single database result (page object) into a {@link Book}, or null. */
+function parseBook(result: any): Book | null {
+  const props: Record<string, any> = result?.properties ?? {}
+  const entries = Object.entries(props)
+
+  // Title: the property whose type === 'title' (found by type, not name).
+  const titleEntry = entries.find(([, p]) => p?.type === 'title')
+  const title = titleEntry
+    ? spansToPlain(parseRich(titleEntry[1]?.title ?? [])).trim()
+    : ''
+  if (!title) return null
+
+  // Status: prefer a status/select property named like /status/i; else the
+  // first status/select property found.
+  const statusCandidates = entries.filter(
+    ([, p]) => p?.type === 'status' || p?.type === 'select',
+  )
+  const statusEntry =
+    statusCandidates.find(([name]) => /status/i.test(name)) ?? statusCandidates[0]
+  const rawStatus = statusEntry
+    ? statusEntry[1]?.status?.name ?? statusEntry[1]?.select?.name
+    : undefined
+  const status = normalizeStatus(rawStatus)
+
+  // Author (optional): a rich_text property named like /author/i.
+  const authorEntry = entries.find(
+    ([name, p]) => p?.type === 'rich_text' && /author/i.test(name),
+  )
+  const author = authorEntry
+    ? spansToPlain(parseRich(authorEntry[1]?.rich_text ?? [])).trim() || undefined
+    : undefined
+
+  // Rating (optional): a number property named like /rating|stars?/i; else a
+  // select/rich_text with the same name whose text carries star glyphs.
+  let rating: string | undefined
+  const numberRating = entries.find(
+    ([name, p]) => p?.type === 'number' && /rating|stars?/i.test(name),
+  )
+  if (numberRating && typeof numberRating[1]?.number === 'number') {
+    rating = String(numberRating[1].number)
+  } else {
+    const textRating = entries.find(
+      ([name, p]) =>
+        /rating|stars?/i.test(name) &&
+        (p?.type === 'select' || p?.type === 'rich_text'),
+    )
+    if (textRating) {
+      const val =
+        textRating[1]?.type === 'select'
+          ? textRating[1]?.select?.name
+          : spansToPlain(parseRich(textRating[1]?.rich_text ?? []))
+      if (val && /[★☆⭐]/.test(val)) rating = val.trim()
+    }
+  }
+
+  // Cover (optional): the page cover, else a files/url property named /cover|image/i.
+  let cover: string | undefined =
+    result?.cover?.external?.url ?? result?.cover?.file?.url ?? undefined
+  if (!cover) {
+    const coverEntry = entries.find(
+      ([name, p]) =>
+        /cover|image/i.test(name) && (p?.type === 'files' || p?.type === 'url'),
+    )
+    if (coverEntry) {
+      const p = coverEntry[1]
+      cover =
+        p?.url ??
+        p?.files?.[0]?.external?.url ??
+        p?.files?.[0]?.file?.url ??
+        undefined
+    }
+  }
+
+  return {
+    id: result?.id,
+    title,
+    author,
+    status,
+    url: result?.url ?? undefined,
+    cover,
+    rating,
+  }
+}
+
+/**
+ * Read the Books database and parse it into {@link BooksContent}.
+ * Returns a graceful empty shape until NOTION_TOKEN + NOTION_BOOKS_DB_ID are set.
+ */
+export async function getBooks(): Promise<BooksContent> {
+  const { NOTION_TOKEN, NOTION_BOOKS_DB_ID } = process.env
+  const empty: BooksContent = { configured: false, reading: [], read: [] }
+
+  if (!NOTION_TOKEN || !NOTION_BOOKS_DB_ID) return empty
+  if (NOTION_TOKEN.length < 20) return empty
+
+  let results: any[]
+  try {
+    results = await databaseQuery(NOTION_BOOKS_DB_ID, NOTION_TOKEN)
+  } catch (err) {
+    console.error('Notion books fetch error:', err)
+    return { ...empty, configured: true }
+  }
+
+  const reading: Book[] = []
+  const read: Book[] = []
+  const want: Book[] = []
+  let lastEdited: string | undefined
+
+  for (const result of results) {
+    const book = parseBook(result)
+    if (!book) continue
+
+    const edited: string | undefined = result?.last_edited_time
+    if (edited && (!lastEdited || edited > lastEdited)) lastEdited = edited
+
+    if (book.status === 'reading') reading.push(book)
+    else if (book.status === 'read') read.push(book)
+    else if (book.status === 'want') want.push(book)
+    // 'other' is intentionally excluded from the three buckets.
+  }
+
+  return {
+    configured: true,
+    reading,
+    read,
+    ...(want.length > 0 ? { want } : {}),
+    lastEdited,
+  }
 }
