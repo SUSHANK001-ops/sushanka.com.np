@@ -47,7 +47,7 @@ Modified files:
 
 - `.env.example` — append a `PROMISE_WALL_DB_URL` section (do not touch existing values).
 - `app/(site)/musafir-cafe/fonts.ts` *(new helper, see Font loading)* OR extend root layout — **chosen: new `fonts.ts`**, see below. The root layout fonts are NOT altered.
-- `next.config.ts` — **no change needed**: `res.cloudinary.com` is already in both `images.remotePatterns` and the CSP `img-src`. Note images may therefore use either `next/image` or plain `<img>`; this design uses plain `<img>` to match the guestbook (guestbook renders Cloudinary uploads with `<img>` / `no-img-element` eslint-disable), avoiding `next/image` layout constraints inside absolutely-positioned notes.
+- `next.config.ts` — **no change needed** (verified against the real file): `res.cloudinary.com` is already in both `images.remotePatterns` and the CSP `img-src`, and the CSP `img-src` additionally allows `data:` and `blob:` — which the composer relies on for local previews (the `drawingDataUrl` is a `data:`/`blob:` object URL and the compressed photo preview is a `blob:`/`data:` URL before upload). So both stored Cloudinary notes and in-composer previews render without any CSP change. Note images may therefore use either `next/image` or plain `<img>`; this design uses plain `<img>` to match the guestbook (guestbook renders Cloudinary uploads with `<img>` / `no-img-element` eslint-disable), avoiding `next/image` layout constraints inside absolutely-positioned notes.
 
 ## Shared type contract
 
@@ -138,6 +138,8 @@ export interface IPromiseNote {
   ink_color: string
   drawing_url?: string | null
   photo_url?: string | null
+  drawing_public_id?: string | null   // PRIVATE — Cloudinary cleanup on DELETE; never serialized
+  photo_public_id?: string | null     // PRIVATE — Cloudinary cleanup on DELETE; never serialized
   photo_caption?: string | null
   pos_x: number
   pos_y: number
@@ -160,6 +162,8 @@ const PromiseNoteSchema = new Schema<IPromiseNote>(
     ink_color: { type: String, required: true },
     drawing_url: { type: String, default: null },
     photo_url: { type: String, default: null },
+    drawing_public_id: { type: String, default: null }, // PRIVATE, never serialized
+    photo_public_id: { type: String, default: null },   // PRIVATE, never serialized
     photo_caption: { type: String, default: null, maxlength: 280 },
     pos_x: { type: Number, required: true },
     pos_y: { type: Number, required: true },
@@ -419,7 +423,7 @@ Errors: DB unreachable → `console.error` + `{ error: "Dusting off the wall is 
 
 Auth required. Creates a note.
 
-Request body (JSON): `{ text, font, color, ink_color, display_name, is_anonymous, alias?, drawing_url?, photo_url?, photo_caption?, agree_rules }`.
+Request body (JSON): `{ text, font, color, ink_color, display_name, is_anonymous, alias?, drawing_url?, drawing_public_id?, photo_url?, photo_public_id?, photo_caption?, agree_rules }`. The `*_public_id` values are the `publicId` returned by `POST /api/musafir-cafe/upload`; the server stores them privately for later Cloudinary cleanup and never echoes them back. If a `*_url` is present its matching `*_public_id` should accompany it; a missing public id is tolerated (deletion simply can't clean that asset) but the server validates that any provided public id is a plain string ≤ 256 chars.
 
 Validation (all server-side, failures return `400` with a friendly message; the client also validates for UX but the server is authoritative):
 
@@ -442,16 +446,21 @@ Validation (all server-side, failures return `400` with a friendly message; the 
 Rate limits (reuse `lib/rateLimit.ts`, identifier = `userKey(session)`):
 
 ```ts
-const uid = userKey(session)
+const uid = userKey(session)            // string | undefined (email lowercased, else id)
+if (!uid) return 401 "Take a seat first. Sign in to leave your note."
 const perMin = await rateLimit('musafir-note-min', uid, 1, 60)
 if (!perMin.allowed) return 429 "One note a minute, Musafir. Catch your breath."
 const perDay = await rateLimit('musafir-note-day', uid, 20, 86400)
 if (!perDay.allowed) return 429 "That's enough notes for today. Come back tomorrow."
 ```
 
+`userKey` (verified in `lib/userKey.ts`) returns `string | undefined` — the lowercased email when present, else the lowercased session id, else `undefined`. Because `user_id` is the single ownership key (used by DELETE and the `mine` flag) and the rate-limit identifier, a note must never be stored with an undefined owner. So after the `session?.user` auth check the route **also** guards `if (!uid)` and returns 401 before any rate-limit or create call. This makes `user_id` a guaranteed non-empty string on every stored note, satisfying the schema's `required: true` and the ownership invariant.
+
 `rateLimit` is backed by the MAIN DB's RateLimit model and stores only a counter keyed by scope+uid — no wall data — so reusing it across DBs is safe (confirmed: `lib/rateLimit.ts` calls `connectDB()` itself).
 
 **Order of operations** (fail cheap first): auth → body parse → field validation → profanity → rate limit (per-min then per-day) → connect wall DB → load visible note boxes → `placeNote` → assign `z_index` → `create` with private `user_id = uid` → return the created note as `PublicNote` (with `mine: true`, no `user_id`).
+
+**Optional honeypot (precedent available).** The guestbook POST (`app/api/guestbook/route.ts`) carries a hidden `website` honeypot field and silently returns `{ success: true }` when it is filled, so bots never learn they were caught. Posting here is already auth-gated and rate-limited, so a honeypot is not required; it is noted as an available, low-cost precedent the implementer may mirror (a hidden `website` field in the composer + a `body.website` check that short-circuits to a fake success) if bot pressure appears. Not part of the required contract.
 
 Pin style selection: server picks `pin_style` with the seeded PRNG (some notes get a pin/tape, most get none), stored on the doc.
 
@@ -465,7 +474,7 @@ Auth required. Owner-only.
 
 - Load note by id. If not found → 404.
 - `if (note.user_id !== userKey(session)) return 403 "You can only take down your own notes."` — ownership checked against the privately stored `user_id`, never anything from the client.
-- Delete the document (hard delete — spec says "remove your own"). If the note had a `drawing_url`/`photo_url`, best-effort `cloudinary.uploader.destroy(publicId)` — **but** we store only the URL per spec, not publicId for notes. Decision: also store `drawing_public_id` / `photo_public_id` privately on the doc (not in `PublicNote`) so deletion can clean up Cloudinary, mirroring the guestbook which stores `imagePublicId`. This is a small addition to the schema beyond the spec's listed fields; justified because the spec also says "Store only URL (+ publicId)" in the image-storage section, so publicId storage is explicitly sanctioned. Cloudinary destroy failures are logged and swallowed (the note is already gone; a dangling asset is acceptable).
+- Delete the document (hard delete — spec says "remove your own"). For each of the note's stored `drawing_public_id` / `photo_public_id` that is non-null, call best-effort `await cloudinary.uploader.destroy(publicId)` (same default-exported client as the guestbook). These two private fields are populated on POST from the `publicId` the upload route returns (the POST stores both the `*_url` and the matching `*_public_id`), mirroring the guestbook which stores `imagePublicId`. This is a small addition to the schema beyond the spec's listed note fields; justified because the spec's image-storage section says "Store only URL (+ publicId)", so publicId storage is explicitly sanctioned. The fields are never serialized into `PublicNote`. Cloudinary destroy failures are caught, logged with `console.error`, and swallowed (the note is already gone; a dangling asset is acceptable).
 - Response `{ success: true }`.
 
 ### `POST /api/musafir-cafe/notes/[id]/report`
@@ -605,7 +614,7 @@ PROMISE_WALL_DB_URL=
 ## Edge cases
 
 - **Empty wall:** GET returns `[]` → client shows "The wall is waiting for its first story." centered on the backdrop.
-- **Signed-out posting:** "Leave a promise" / tapping compose while signed out → `SignInPopup` with "Take a seat first. Sign in to leave your note.", `callbackUrl: '/musafir-cafe'`.
+- **Signed-out posting:** "Leave a promise" / tapping compose while signed out → render the imported `SignInPopup` with `action="leave your note"` (the component composes its own body copy as "Please sign in to {action}..."; it does not accept a free-form message prop). Pass `open`, `onClose`, and an `onSignIn={(provider) => signIn(provider, { callbackUrl: '/musafir-cafe' })}` handler, mirroring the guestbook's usage. The "Take a seat first. Sign in to leave your note." line is the API-layer 401 message, surfaced by the client as a toast if a post is attempted without a session; it is distinct from the popup copy.
 - **Very long single word in text:** CSS `overflow-wrap: anywhere` on `.mz-note-text` so a 280-char unbroken string doesn't overflow the note.
 - **Only-drawing or only-photo note (no text):** allowed; `.mz-note-text` collapses; polaroid/drawing fills the note.
 - **Photo + drawing + text together:** note stacks photo (top), drawing, then text; photo notes get the taller box; placement uses the taller height.
