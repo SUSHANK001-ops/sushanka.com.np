@@ -19,7 +19,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://cloud.umami.is https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://res.cloudinary.com https://i.scdn.co https://avatars.githubusercontent.com https://raw.githubusercontent.com https://lh3.googleusercontent.com https://sushanka.com.np https://www.notion.so https://s3.us-west-2.amazonaws.com https://prod-files-secure.s3.us-west-2.amazonaws.com https://*.googlesyndication.com https://*.doubleclick.net",
+  "img-src 'self' data: blob: https://res.cloudinary.com https://i.scdn.co https://avatars.githubusercontent.com https://raw.githubusercontent.com https://lh3.googleusercontent.com https://sushanka.com.np https://www.notion.so https://s3.us-west-2.amazonaws.com https://prod-files-secure.s3.us-west-2.amazonaws.com https://m.media-amazon.com https://images-na.ssl-images-amazon.com https://books.google.com https://*.googleusercontent.com https://*.googlesyndication.com https://*.doubleclick.net",
   "font-src 'self' data:",
   "connect-src 'self' https://cloud.umami.is https://api-gateway.umami.dev https://*.googlesyndication.com https://*.doubleclick.net",
   "frame-src https://*.googlesyndication.com https://*.doubleclick.net",
@@ -80,6 +80,18 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'prod-files-secure.s3.us-west-2.amazonaws.com', // Notion signed file covers
+      },
+      {
+        protocol: 'https',
+        hostname: 'm.media-amazon.com', // Amazon book covers (Notion external cover URLs)
+      },
+      {
+        protocol: 'https',
+        hostname: 'images-na.ssl-images-amazon.com', // Amazon book covers (legacy host)
+      },
+      {
+        protocol: 'https',
+        hostname: 'books.google.com', // Google Books cover thumbnails
       },
     ],
   },
