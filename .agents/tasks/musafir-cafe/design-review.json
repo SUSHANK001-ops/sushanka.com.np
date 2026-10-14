@@ -1,0 +1,70 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "MEDIUM",
+      "title": "POST 'Order of operations' select omits rotation and created_at required by the placement check",
+      "location": "POST handler 'Order of operations' vs 'Note placement algorithm → Server input set'",
+      "problem": "Order-of-operations lists the projection as 'pos_x pos_y pos_x_v pos_y_v photo_url z_index', but check (b) needs rotation (for rotatedAABB) and created_at (middle key of the (z_index, created_at, _id) comparator). Following the Order-of-operations list literally corrupts the 60% invariant.",
+      "fix": "Make both lists identical: select 'pos_x pos_y pos_x_v pos_y_v photo_url z_index rotation created_at' (_id returned by default). State once that this single projection feeds both placement passes."
+    },
+    {
+      "id": 2,
+      "severity": "MEDIUM",
+      "title": "isPhoto needed for every existing note's height but derivation is unspecified",
+      "location": "Note placement algorithm → Server input set; noteBox(isPhoto) helper",
+      "problem": "Each existing note's inflated box uses PHOTO_NOTE_H iff it is a photo note, but the design never states how isPhoto is derived for existing notes, and whether a text+photo note counts. Mis-derivation breaks the 35%/60% math for mixed notes.",
+      "fix": "State once: isPhoto = Boolean(photo_url) is the only height-determining flag, derived identically at placement and render time; .mz-note--photo taller box applies under the exact same photo_url != null condition."
+    },
+    {
+      "id": 3,
+      "severity": "MEDIUM",
+      "title": "Vertical pass seed height and growth step under-specified; 'one screen-dimension' is undefined server-side",
+      "location": "Layout (vertical wall height); placement step 5",
+      "problem": "Vertical pass fixes width to 420 but never pins initial wall.height or the growth increment; 'grow by one screen-dimension' has no meaning on the server. Placement is order/state-dependent, so unspecified seed/growth breaks the determinism the revision relies on.",
+      "fix": "Pin server-side constants in lib/notePlacement.ts: V_WALL_SEED_HEIGHT, a fixed GROWTH_STEP in logical px (not 'one screen'), monotonic non-shrinking growth, so re-placement of the same set is stable."
+    },
+    {
+      "id": 4,
+      "severity": "MEDIUM",
+      "title": "Horizontal canvas height is a client value (viewport height) but 2D placement needs a fixed logical height",
+      "location": "Layout → Desktop; Note placement algorithm (wall.height, horizontal pass)",
+      "problem": "Desktop canvas height = '100vh', a per-device client value, yet server placement is 2D (pos_y matters) and the 35%/60% invariant is computed against the server's wall.height. If server height != rendered height, notes overflow/compress and the invariant diverges from what the viewer sees. The vertical pass fixed its width for this exact reason.",
+      "fix": "Define a fixed logical H_WALL_HEIGHT (e.g. 900) in lib/notePlacement.ts, use it for the horizontal pass, and render the desktop canvas scaled from that logical height (mirroring the mobile scale-the-canvas decision) instead of raw 100vh."
+    },
+    {
+      "id": 5,
+      "severity": "MEDIUM",
+      "title": "coveredFraction call contract (recentred inflated origin) and the 40-cell boundary are not pinned",
+      "location": "coveredFraction definition + step 4b invocation + invariants section",
+      "problem": "coveredFraction samples from pos_x/pos_y as top-left, but inflated boxes are recentred (pos_x' = cx - w'/2); the call site never says to pass the recentred inflated origin, so an implementer may sample an offset box. Also the exactly-40-cells (=60% visible) boundary is left to re-interpretation.",
+      "fix": "Specify callers pass the recentred inflated box { pos_x: cx - w'/2, pos_y: cy - h'/2, w: w', h: h' } for A and every higher-z box; state once: reject iff strictly more than 40 of 100 cells are covered (exactly 40 / >=60% visible passes)."
+    },
+    {
+      "id": 6,
+      "severity": "NIT",
+      "title": "Clarify PromiseNote model is only ever created via getPromiseNoteModel()",
+      "location": "model/promiseNoteModel.ts",
+      "problem": "Nothing forbids accidentally binding the model to the default (main) connection via mongoose.model(...).",
+      "fix": "Add a one-line note that the model must only be created through getPromiseNoteModel() on the separate connection; no logic change."
+    },
+    {
+      "id": 7,
+      "severity": "NIT",
+      "title": "Redundant findById before findOneAndUpdate in report route",
+      "location": "POST /api/musafir-cafe/notes/[id]/report",
+      "problem": "findById is a second round-trip whose only job is the 404; findOneAndUpdate already returns null when no doc matches.",
+      "fix": "Drop findById; use 'if (!updated) return 404' on the findOneAndUpdate result and keep the auto-hide check on that same doc."
+    },
+    {
+      "id": 8,
+      "severity": "NIT",
+      "title": "State that only Cloudinary *Url (never blob:/data: previews) are submitted",
+      "location": "Composer submit flow + POST validation table",
+      "problem": "draft holds blob:/data: previews (drawingDataUrl/photoDataUrl) and Cloudinary URLs; the Cloudinary-only regex would 400 a preview URL if accidentally submitted.",
+      "fix": "One sentence: submit sends only draft.drawingUrl/draft.photoUrl (Cloudinary); the *DataUrl previews are never sent."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\susha\\OneDrive\\Desktop\\Webdevstuff\\Animated-port\\.agents\\tasks\\musafir-cafe\\design-review.md"
+}

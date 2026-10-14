@@ -1,0 +1,7 @@
+{
+  "task_id": "task-musafir-cafe-promise-wall",
+  "task_description": "Implement the Musafir Cafe Promise Wall at /musafir-cafe in the existing Next.js 16 portfolio: a public page rendering handwritten sticky notes on a cafe wall, backed by a SEPARATE MongoDB connection, with a deterministic server-side placement algorithm (35% per-note cap + 60% cumulative-visibility rule on rotation-inflated boxes), a full REST contract (keyset-paginated GET, auth+validate+profanity+ratelimit+place POST, owner DELETE, dedup report with auto-hide), Cloudinary image storage, a three-tab write/draw/photo composer, horizontal/vertical layouts with viewport-cull virtualization, self-hosted handwriting fonts, and full a11y/reduced-motion/sound-graceful-degradation. Build EXACTLY per design.md with the 5 MEDIUM fixes + 3 NITs from design-review.md baked in. No test runner is added; gates are npm run build + npm run lint. NO git commits.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}
