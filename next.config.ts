@@ -19,7 +19,11 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://cloud.umami.is https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://res.cloudinary.com https://i.scdn.co https://avatars.githubusercontent.com https://raw.githubusercontent.com https://lh3.googleusercontent.com https://sushanka.com.np https://www.notion.so https://s3.us-west-2.amazonaws.com https://prod-files-secure.s3.us-west-2.amazonaws.com https://m.media-amazon.com https://images-na.ssl-images-amazon.com https://books.google.com https://*.googleusercontent.com https://*.googlesyndication.com https://*.doubleclick.net",
+  // Images: 'self' + data/blob for app assets, plus any HTTPS host so Notion
+  // book covers from arbitrary CDNs (Amazon, Goodreads, Google Books, publisher
+  // sites) load without per-host allowlisting. Only img-src is broadened; every
+  // other directive (script/connect/frame) stays strictly allowlisted.
+  "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "connect-src 'self' https://cloud.umami.is https://api-gateway.umami.dev https://*.googlesyndication.com https://*.doubleclick.net",
   "frame-src https://*.googlesyndication.com https://*.doubleclick.net",
@@ -82,16 +86,12 @@ const nextConfig: NextConfig = {
         hostname: 'prod-files-secure.s3.us-west-2.amazonaws.com', // Notion signed file covers
       },
       {
+        // Book covers in Notion can point to arbitrary image hosts (Amazon,
+        // Goodreads, Google Books, publisher CDNs, etc.). Allow any HTTPS host
+        // so new covers never 500. Scope is read-only next/image optimization;
+        // CSP img-src (https:) still gates what the browser is allowed to load.
         protocol: 'https',
-        hostname: 'm.media-amazon.com', // Amazon book covers (Notion external cover URLs)
-      },
-      {
-        protocol: 'https',
-        hostname: 'images-na.ssl-images-amazon.com', // Amazon book covers (legacy host)
-      },
-      {
-        protocol: 'https',
-        hostname: 'books.google.com', // Google Books cover thumbnails
+        hostname: '**',
       },
     ],
   },
