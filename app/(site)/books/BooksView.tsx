@@ -1,18 +1,21 @@
 'use client'
 import React, { useState } from 'react'
 import Image from 'next/image'
-import { BookOpen, BookMarked, CheckCircle2, Star, ArrowUpRight } from 'lucide-react'
+import { BookOpen, BookMarked, CheckCircle2, Star } from 'lucide-react'
 import type { Book, BookStatus, BooksContent } from '@/lib/notion'
 import { useGsapReveal } from '../../ui/useGsapReveal'
 
 /* ------------------------------------------------------------------ */
-/*  Per-status display labels.                                         */
+/*  Per-status display labels (as requested):                          */
+/*    read     -> "Read"                                               */
+/*    reading  -> "In Progress"  (Notion "In progress")                */
+/*    want     -> "Not started"  (Notion "Not started")                */
 /* ------------------------------------------------------------------ */
 
 const STATUS_LABEL: Record<BookStatus, string> = {
-  reading: 'Reading',
   read: 'Read',
-  want: 'Want to read',
+  reading: 'In Progress',
+  want: 'Not started',
   other: 'Shelved',
 }
 
@@ -24,118 +27,98 @@ function initials(title: string): string {
   return (words[0][0] + words[1][0]).toUpperCase()
 }
 
+/* A small deterministic hue from the title so spine/placeholder colors vary. */
+function hueFromTitle(title: string): number {
+  let h = 0
+  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) % 360
+  return h
+}
+
 /* ------------------------------------------------------------------ */
-/*  Cover — next/image when present, styled placeholder otherwise.     */
+/*  3D book — stands upright on the shelf with a front cover + spine.  */
 /* ------------------------------------------------------------------ */
 
-function Cover({ book }: { book: Book }) {
+function Book3D({ book }: { book: Book }) {
   const [failed, setFailed] = useState(false)
+  const label = STATUS_LABEL[book.status]
+  const hue = hueFromTitle(book.title)
+  const hasCover = Boolean(book.cover) && !failed
 
-  if (book.cover && !failed) {
-    return (
-      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-md border border-border bg-surface">
-        <Image
-          src={book.cover}
-          alt={`Cover of ${book.title}`}
-          fill
-          sizes="48px"
-          // Notion-hosted covers are signed S3 URLs that expire ~1h. Skipping
-          // next/image optimization means each render uses the fresh signed URL
-          // the server just fetched, instead of a cached reference to a dead one.
-          unoptimized
-          onError={() => setFailed(true)}
-          className="object-cover"
-        />
-      </div>
-    )
-  }
   return (
-    <div
-      aria-hidden
-      className="flex h-16 w-12 shrink-0 flex-col items-center justify-center rounded-md border border-border bg-surface text-muted"
-    >
-      <BookOpen size={14} className="mb-0.5" />
-      <span className="font-mono text-[0.6rem] tracking-wide">{initials(book.title)}</span>
+    <div className="book3d-slot group">
+      <div className="book3d" title={`${book.title}${book.author ? ` — ${book.author}` : ''}`}>
+        {/* Spine (left side, rotated back in 3D) */}
+        <div
+          className="book3d-spine"
+          style={{
+            background: `linear-gradient(180deg, hsl(${hue} 45% 32%), hsl(${hue} 50% 22%))`,
+          }}
+        >
+          <span className="book3d-spine-title">{book.title}</span>
+        </div>
+
+        {/* Front cover */}
+        <div className="book3d-front">
+          {hasCover ? (
+            <Image
+              src={book.cover as string}
+              alt={`Cover of ${book.title}`}
+              fill
+              sizes="150px"
+              // Notion-hosted covers are signed S3 URLs (~1h expiry); skip
+              // optimization so each render uses the fresh signed URL.
+              unoptimized
+              onError={() => setFailed(true)}
+              className="object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="flex h-full w-full flex-col items-center justify-center p-2 text-center"
+              style={{
+                background: `linear-gradient(145deg, hsl(${hue} 42% 38%), hsl(${hue} 48% 26%))`,
+              }}
+            >
+              <BookOpen size={18} className="mb-1 text-white/80" />
+              <span className="line-clamp-3 font-serif text-[0.62rem] font-semibold leading-tight text-white/90">
+                {book.title}
+              </span>
+              <span className="mt-1 font-mono text-[0.55rem] tracking-widest text-white/60">
+                {initials(book.title)}
+              </span>
+            </div>
+          )}
+          {/* subtle page edge + gloss */}
+          <span aria-hidden className="book3d-pages" />
+          <span aria-hidden className="book3d-gloss" />
+        </div>
+      </div>
+
+      {/* Caption below the book */}
+      <div className="book3d-caption">
+        <p className="truncate font-semibold text-foreground">{book.title}</p>
+        {book.author && <p className="truncate text-xs text-muted">{book.author}</p>}
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+          <span className="rounded-full border border-border bg-surface/70 px-2 py-0.5 font-mono text-[0.62rem] text-muted">
+            {label}
+          </span>
+          {book.rating && (
+            <span className="inline-flex items-center gap-0.5 text-[0.62rem] text-muted">
+              <Star size={10} className="text-accent" aria-hidden />
+              {book.rating}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/*  Book card.                                                         */
+/*  A shelf: a titled row of 3D books on a wooden plank.               */
 /* ------------------------------------------------------------------ */
 
-function BookCard({ book }: { book: Book }) {
-  const label = STATUS_LABEL[book.status]
-
-  const inner = (
-    <>
-      <Cover book={book} />
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate font-semibold text-foreground">{book.title}</h3>
-        {book.author && (
-          <p className="mt-0.5 truncate text-sm text-muted">{book.author}</p>
-        )}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-border px-2.5 py-0.5 font-mono text-xs text-muted">
-            {label}
-          </span>
-          {book.rating && (
-            <span className="inline-flex items-center gap-1 text-xs text-muted">
-              <Star size={12} className="text-accent" aria-hidden />
-              {book.rating}
-            </span>
-          )}
-        </div>
-        {book.genres && book.genres.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {book.genres.map((genre) => (
-              <span
-                key={genre}
-                className="rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] text-foreground/60"
-              >
-                {genre}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-      {book.url && (
-        <ArrowUpRight
-          size={16}
-          aria-hidden
-          className="shrink-0 text-muted transition-colors group-hover:text-accent"
-        />
-      )}
-    </>
-  )
-
-  if (book.url) {
-    return (
-      <a
-        href={book.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        data-click-sound
-        aria-label={`${book.title}${book.author ? ` by ${book.author}` : ''} — ${label}, open in Notion`}
-        className="ed-card group flex items-start gap-3 transition hover:-translate-y-0.5"
-      >
-        {inner}
-      </a>
-    )
-  }
-
-  return (
-    <article className="ed-card group flex items-start gap-3">
-      {inner}
-    </article>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  A titled section with a grid of book cards.                        */
-/* ------------------------------------------------------------------ */
-
-function BookSection({
+function Shelf({
   title,
   icon: Icon,
   books,
@@ -144,54 +127,47 @@ function BookSection({
   icon: typeof BookOpen
   books: Book[]
 }) {
-  const gridRef = useGsapReveal<HTMLDivElement>({ stagger: 0.08 })
+  const rowRef = useGsapReveal<HTMLDivElement>({ stagger: 0.08 })
   return (
-    <section className="mt-14">
-      <div className="mb-5 flex items-center gap-2">
+    <section className="mt-12">
+      <div className="mb-4 flex items-center gap-2">
         <Icon size={18} className="text-accent" />
         <h2 className="serif-title serif-section !mb-0">{title}</h2>
+        <span className="ml-1 font-mono text-xs text-muted">({books.length})</span>
       </div>
-      <div ref={gridRef} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {books.map((book) => (
-          <BookCard key={book.id} book={book} />
-        ))}
+
+      <div className="shelf">
+        <div ref={rowRef} className="shelf-row">
+          {books.map((book) => (
+            <Book3D key={book.id} book={book} />
+          ))}
+        </div>
+        {/* wooden plank the books stand on */}
+        <div aria-hidden className="shelf-plank" />
       </div>
     </section>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/*  Main view.                                                         */
+/*  Main view — a library wall of shelves, grouped by status.          */
 /* ------------------------------------------------------------------ */
 
 const BooksView = ({ content }: { content: BooksContent }) => {
   const { reading, read, want } = content
 
   return (
-    <>
+    <div className="library mt-10 rounded-2xl p-5 md:p-8">
       {reading.length > 0 && (
-        <BookSection title="Currently reading" icon={BookOpen} books={reading} />
+        <Shelf title="In Progress" icon={BookOpen} books={reading} />
       )}
 
       {want && want.length > 0 && (
-        <BookSection title="Want to read" icon={BookMarked} books={want} />
+        <Shelf title="Not started" icon={BookMarked} books={want} />
       )}
 
-      {read.length > 0 && (
-        <BookSection title="Read" icon={CheckCircle2} books={read} />
-      )}
-
-      {content.lastEdited && (
-        <p className="mt-12 border-t border-border pt-6 text-xs text-muted">
-          Last synced from Notion:{' '}
-          {new Date(content.lastEdited).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-          })}
-        </p>
-      )}
-    </>
+      {read.length > 0 && <Shelf title="Read" icon={CheckCircle2} books={read} />}
+    </div>
   )
 }
 
