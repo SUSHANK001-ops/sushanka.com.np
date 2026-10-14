@@ -6,7 +6,7 @@ import BooksView from './BooksView'
 export const metadata: Metadata = {
   title: 'Books · Sushanka Lamichhane',
   description:
-    'What I am reading and what I have read — a reading list synced from Notion. Books as a quiet way to live many lives and collect ideas.',
+    'What I am reading and what I have read — a quiet way to live many lives and collect ideas.',
 }
 
 // Refresh at most every 5 minutes so Notion edits appear without a rebuild.
@@ -33,15 +33,8 @@ export default async function BooksPage() {
       ) : (
         <div className="mt-10 rounded-xl border border-dashed border-border p-8 text-center">
           <p className="text-sm text-muted">
-            {content.configured
-              ? 'Nothing on the shelf yet — add some books to the Notion database.'
-              : 'The reading list is not connected to Notion yet.'}
+            The shelf is empty right now — check back soon.
           </p>
-          {!content.configured && (
-            <p className="mt-2 font-mono text-[11px] text-muted/70">
-              Set NOTION_TOKEN and NOTION_BOOKS_DB_ID to go live.
-            </p>
-          )}
         </div>
       )}
     </div>

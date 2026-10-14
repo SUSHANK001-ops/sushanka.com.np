@@ -314,17 +314,25 @@ export async function getManifestContent(): Promise<ManifestContent> {
  *  known bucket is dropped from the three lists.
  * ========================================================================== */
 
-/** Query one page of a Notion database, collecting all results via pagination. */
-async function databaseQuery(
-  dbId: string,
+/**
+ * Query one page of a Notion DATA SOURCE, collecting all results via pagination.
+ *
+ * Notion's 2025-09-03 API moved queryable rows from "databases" to the
+ * "data sources" they contain. The id in NOTION_BOOKS_DB_ID is a data source
+ * id (resolve it from a database id via GET /databases/{id} → data_sources[0]).
+ */
+const DATA_SOURCE_API_VERSION = '2025-09-03'
+
+async function dataSourceQuery(
+  dataSourceId: string,
   token: string,
   startCursor?: string,
 ): Promise<any[]> {
-  const res = await fetch(`${API_BASE}/databases/${dbId}/query`, {
+  const res = await fetch(`${API_BASE}/data_sources/${dataSourceId}/query`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      'Notion-Version': NOTION_VERSION,
+      'Notion-Version': DATA_SOURCE_API_VERSION,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -333,11 +341,11 @@ async function databaseQuery(
     }),
     cache: 'no-store',
   })
-  if (!res.ok) throw new Error(`Notion database query ${res.status}`)
+  if (!res.ok) throw new Error(`Notion data source query ${res.status}`)
   const data = await res.json()
   const results: any[] = data?.results ?? []
   if (data?.has_more && data?.next_cursor) {
-    results.push(...(await databaseQuery(dbId, token, data.next_cursor)))
+    results.push(...(await dataSourceQuery(dataSourceId, token, data.next_cursor)))
   }
   return results
 }
@@ -490,7 +498,7 @@ export async function getBooks(): Promise<BooksContent> {
 
   let results: any[]
   try {
-    results = await databaseQuery(NOTION_BOOKS_DB_ID, NOTION_TOKEN)
+    results = await dataSourceQuery(NOTION_BOOKS_DB_ID, NOTION_TOKEN)
   } catch (err) {
     console.error('Notion books fetch error:', err)
     return { ...empty, configured: true }
