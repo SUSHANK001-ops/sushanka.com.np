@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import { BookOpen, BookMarked, CheckCircle2, Star, ArrowUpRight } from 'lucide-react'
 import type { Book, BookStatus, BooksContent } from '@/lib/notion'
@@ -29,7 +29,9 @@ function initials(title: string): string {
 /* ------------------------------------------------------------------ */
 
 function Cover({ book }: { book: Book }) {
-  if (book.cover) {
+  const [failed, setFailed] = useState(false)
+
+  if (book.cover && !failed) {
     return (
       <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-md border border-border bg-surface">
         <Image
@@ -37,6 +39,11 @@ function Cover({ book }: { book: Book }) {
           alt={`Cover of ${book.title}`}
           fill
           sizes="48px"
+          // Notion-hosted covers are signed S3 URLs that expire ~1h. Skipping
+          // next/image optimization means each render uses the fresh signed URL
+          // the server just fetched, instead of a cached reference to a dead one.
+          unoptimized
+          onError={() => setFailed(true)}
           className="object-cover"
         />
       </div>
