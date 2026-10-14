@@ -1190,50 +1190,111 @@ a:hover > .arrow-slide { transform: translateX(3px); }
 
 /* ============================================================================
    Library / 3D bookshelf — the /books page.
-   A warm wooden "library wall" holding upright 3D books. Books sit on a plank;
-   hovering lifts a book off the shelf and squares it to the reader. All colors
-   derive from theme tokens so it adapts to light/dark.
+   A warm wooden bookcase: each status is a shelf unit (back panel + side walls
+   + a plank the books stand on). Books are upright 3D objects (cover front +
+   spine) that lift and square to the reader on hover. Sizes scale fluidly with
+   clamp() and the grid reflows so it reads well from phone to desktop. All
+   theme-neutral colors come from tokens so light/dark both look right.
+   --book-w drives every derived dimension; override it in media queries.
    ========================================================================== */
 
 .library {
-  /* Warm wood-paneled back wall behind the shelves. */
+  --book-w: clamp(84px, 11vw, 120px);
+  --book-h: calc(var(--book-w) * 1.5);
+  --book-depth: calc(var(--book-w) * 0.1);
+  --wood-top: #6b4423;
+  --wood-mid: #5a3a1e;
+  --wood-dark: #3d2612;
+  --wood-light: #a9763f;
+  --ink: #f6ecdb;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.4rem, 3vw, 2.2rem);
+  border-radius: 1rem;
+  padding: clamp(1rem, 3vw, 2rem) clamp(0.9rem, 3vw, 2rem) clamp(0.6rem, 2vw, 1.2rem);
+  /* A real walnut bookcase — warm wood, not mixed with the page surface. */
   background:
-    linear-gradient(180deg,
-      color-mix(in srgb, #3a2410 30%, var(--surface)) 0%,
-      color-mix(in srgb, #2a1908 42%, var(--surface)) 100%),
-    repeating-linear-gradient(90deg,
-      color-mix(in srgb, #000 6%, transparent) 0 2px,
-      transparent 2px 70px);
-  border: 1px solid color-mix(in srgb, #2a1908 60%, var(--border));
-  box-shadow: inset 0 2px 24px rgba(0, 0, 0, 0.35);
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 7%, transparent 93%, rgba(0, 0, 0, 0.28)),
+    repeating-linear-gradient(91deg, rgba(0, 0, 0, 0.05) 0 3px, transparent 3px 46px),
+    linear-gradient(165deg, var(--wood-top), var(--wood-mid) 55%, var(--wood-dark));
+  border: 1px solid var(--wood-dark);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 40px rgba(0, 0, 0, 0.35),
+    0 30px 60px -30px rgba(0, 0, 0, 0.55);
 }
 
-.shelf {
+.library-foot {
+  text-align: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+/* --- shelf unit (one per status) --- */
+.shelf-unit {
   position: relative;
-  padding-bottom: 1.1rem; /* room for the plank */
+  display: flex;
+  flex-direction: column;
 }
 
+.shelf-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.4rem;
+}
+.shelf-head-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.5rem;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.shelf-head-title {
+  margin: 0;
+  flex: 0 0 auto;
+  font-family: var(--font-serif, ui-serif, serif);
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.shelf-head-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 9999px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--wood-dark);
+  background: var(--wood-light);
+  box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Books stand directly on the plank; the plank is the bottom border. */
 .shelf-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.6rem 1.9rem;
+  justify-content: center;
   align-items: flex-end;
-  padding: 0.5rem 0.75rem 0.9rem;
-  perspective: 1200px;
-}
-
-/* The wooden plank the books stand on. */
-.shelf-plank {
-  height: 16px;
-  margin: 0 0.25rem;
-  border-radius: 3px;
-  background:
-    linear-gradient(180deg,
-      color-mix(in srgb, #8a5a2e 85%, #000) 0%,
-      color-mix(in srgb, #4a2d13 90%, #000) 100%);
-  box-shadow:
-    0 10px 18px -8px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 color-mix(in srgb, #c98a4e 60%, transparent);
+  gap: clamp(1.1rem, 2.6vw, 2rem);
+  padding: 0.4rem clamp(0.5rem, 2vw, 1.4rem) 0;
+  perspective: 1500px;
+  perspective-origin: 50% 90%;
+  /* The plank: a thick wooden board the books rest on. */
+  border-bottom: clamp(14px, 1.8vw, 20px) solid transparent;
+  border-image: linear-gradient(180deg, var(--wood-light), var(--wood-dark)) 1;
+  box-shadow: 0 clamp(14px, 1.8vw, 20px) 20px -14px rgba(0, 0, 0, 0.7);
 }
 
 /* --- a single book slot (3D book + caption) --- */
@@ -1241,61 +1302,64 @@ a:hover > .arrow-slide { transform: translateX(3px); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100px;
+  width: var(--book-w);
+  margin-bottom: clamp(0.6rem, 1.5vw, 1rem);
 }
 
 .book3d {
   position: relative;
-  width: 86px;
-  height: 128px;
+  width: var(--book-w);
+  height: var(--book-h);
   transform-style: preserve-3d;
-  transform: rotateY(-26deg);
-  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.4s ease;
-  filter: drop-shadow(-10px 14px 14px rgba(0, 0, 0, 0.45));
+  transform: rotateY(-20deg);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease;
+  filter: drop-shadow(calc(var(--book-depth) * -0.9) 8px 10px rgba(0, 0, 0, 0.5));
 }
-.book3d-slot:hover .book3d {
-  transform: rotateY(0deg) translateY(-14px) scale(1.04);
-  filter: drop-shadow(0 20px 22px rgba(0, 0, 0, 0.5));
+.book3d-slot:hover .book3d,
+.book3d-slot:focus-within .book3d {
+  transform: rotateY(0deg) translateY(-16px) scale(1.06);
+  filter: drop-shadow(0 22px 24px rgba(0, 0, 0, 0.55));
+  z-index: 2;
 }
 
 /* Front face = the cover. */
 .book3d-front {
   position: absolute;
   inset: 0;
-  border-radius: 2px 4px 4px 2px;
+  border-radius: 2px 5px 5px 2px;
   overflow: hidden;
   background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
-  transform: translateZ(10px);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  transform: translateZ(var(--book-depth));
+  backface-visibility: hidden;
 }
 
-/* Spine = the left side, pushed back so it reads as depth. */
+/* Spine = the left side, rotated back for depth. */
 .book3d-spine {
   position: absolute;
   left: 0;
   top: 0;
   height: 100%;
-  width: 20px;
+  width: calc(var(--book-depth) * 2);
   border-radius: 3px 0 0 3px;
-  transform: rotateY(-90deg) translateZ(10px);
+  transform: rotateY(-90deg) translateZ(var(--book-depth));
   transform-origin: left center;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset -3px 0 6px rgba(0, 0, 0, 0.35);
+  box-shadow: inset -4px 0 7px rgba(0, 0, 0, 0.45);
 }
 .book3d-spine-title {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-family: var(--font-geist), serif;
-  font-size: 0.52rem;
+  font-family: var(--font-serif, ui-serif, serif);
+  font-size: 0.5rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
   overflow: hidden;
-  max-height: 110px;
+  max-height: 84%;
   text-overflow: ellipsis;
   padding: 4px 0;
 }
@@ -1303,47 +1367,84 @@ a:hover > .arrow-slide { transform: translateX(3px); }
 /* Right-edge "pages" sliver for realism. */
 .book3d-pages {
   position: absolute;
-  top: 2px;
-  bottom: 2px;
+  top: 3px;
+  bottom: 3px;
   right: 0;
   width: 4px;
-  background: repeating-linear-gradient(
-    180deg,
-    #f3efe6 0 1px,
-    #d9d3c6 1px 2px
-  );
-  opacity: 0.85;
+  background: repeating-linear-gradient(180deg, #f3efe6 0 1px, #cfc8b8 1px 2px);
+  opacity: 0.9;
 }
 /* Soft gloss sweep over the cover. */
 .book3d-gloss {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    115deg,
-    rgba(255, 255, 255, 0.28) 0%,
-    rgba(255, 255, 255, 0.06) 22%,
-    transparent 46%
+    118deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.06) 20%,
+    transparent 44%
   );
   pointer-events: none;
 }
 
 .book3d-caption {
-  margin-top: 0.85rem;
-  width: 100px;
+  margin-top: 0.9rem;
+  width: calc(var(--book-w) + 20px);
   text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.book3d-caption p { color: var(--ink); }
+.book3d-caption .text-muted,
+.book3d-caption .text-foreground { color: var(--ink) !important; }
+.book3d-caption p:nth-child(2) { color: color-mix(in srgb, var(--ink) 68%, transparent); }
+
+/* Status pill tinted per status, readable on wood. */
+.book-pill {
+  display: inline-block;
+  border-radius: 9999px;
+  padding: 0.1rem 0.55rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.book-pill--read {
+  background: color-mix(in srgb, #2f8f5b 55%, rgba(0, 0, 0, 0.3));
+  border-color: color-mix(in srgb, #58d08f 50%, transparent);
+}
+.book-pill--reading {
+  background: color-mix(in srgb, #d08a2e 55%, rgba(0, 0, 0, 0.3));
+  border-color: color-mix(in srgb, #f0b45c 50%, transparent);
+}
+.book-pill--want {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Rating — the exact star glyphs stored in Notion, in warm gold. */
+.book-rating {
   font-size: 0.78rem;
-  line-height: 1.2;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #f2c14e;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
 }
 
-@media (max-width: 640px) {
-  .book3d-slot { width: 84px; }
-  .book3d { width: 72px; height: 108px; }
-  .book3d-caption { width: 84px; }
-  .shelf-row { gap: 1.3rem 1.3rem; }
+/* Finer control at the small end. */
+@media (max-width: 480px) {
+  .library { --book-w: clamp(78px, 30vw, 100px); }
+  .shelf-row { gap: 1.2rem 1.3rem; }
 }
 
-/* Respect reduced-motion: no lift/rotation animation. */
+/* Respect reduced-motion. */
 @media (prefers-reduced-motion: reduce) {
-  .book3d { transition: none; transform: rotateY(-14deg); }
-  .book3d-slot:hover .book3d { transform: rotateY(0deg); }
+  .book3d { transition: none; transform: rotateY(-12deg); }
+  .book3d-slot:hover .book3d,
+  .book3d-slot:focus-within .book3d { transform: rotateY(0deg); }
 }
