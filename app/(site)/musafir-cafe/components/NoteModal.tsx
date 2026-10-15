@@ -27,13 +27,10 @@ function formatDate(iso: string): string {
  * DELETEs with optimistic removal.
  */
 export default function NoteModal({ note, onClose, onDeleted, onLift }: NoteModalProps) {
-  const [mounted, setMounted] = useState(false)
   const [busy, setBusy] = useState<null | 'report' | 'delete'>(null)
   const [reported, setReported] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => setMounted(true), [])
 
   // Soft paper-lift sound on open (gated + graceful upstream).
   useEffect(() => {

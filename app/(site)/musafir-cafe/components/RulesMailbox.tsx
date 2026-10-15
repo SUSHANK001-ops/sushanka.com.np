@@ -18,16 +18,14 @@ const RULES: string[] = [
  */
 export default function RulesMailbox() {
   const [open, setOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const dialogRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => setMounted(true), [])
 
   // Focus trap + Escape, restore focus to the trigger on close.
   useEffect(() => {
     if (!open) return
     const dialog = dialogRef.current
+    const trigger = triggerRef.current
     const focusables = dialog?.querySelectorAll<HTMLElement>(
       'button, [href], input, [tabindex]:not([tabindex="-1"])'
     )
@@ -54,7 +52,7 @@ export default function RulesMailbox() {
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      triggerRef.current?.focus()
+      trigger?.focus()
     }
   }, [open])
 
@@ -75,7 +73,7 @@ export default function RulesMailbox() {
       </button>
 
       {open &&
-        mounted &&
+        typeof document !== 'undefined' &&
         createPortal(
           <div className="mz-modal-overlay" role="presentation">
             <div
