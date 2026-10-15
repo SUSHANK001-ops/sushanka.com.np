@@ -150,3 +150,21 @@ Ran the whole-feature integration check (no `review.md` present → mode A). Bra
 ### Scope decision on the 15 lint errors (NOT fixed — intentional)
 
 The failing files are not part of the Musafir Cafe feature and are unchanged from the base branch. The original user instruction for this feature is explicit: *"it only added in new end point no change in other."* Fixing these errors would require editing those pre-existing guestbook/admin/navbar/avatar files — i.e. changing "the other" code the user said must stay untouched — and the fixes are behavior-affecting (effect timing in Navbar/AnimatedAvatar/guestbook modals; retyping guestbook/admin route handlers). Per that instruction these are left as-is. The Musafir Cafe feature itself introduces zero build or lint errors; `npm run build` passes and the feature's own files lint clean.
+
+## FINAL CONFIRMATION PASS (post-APPROVED verdict)
+
+Verdict: APPROVED (`.agents/tasks/musafir-cafe/verdict.json`). Ran the two gates once more (no `npm run dev`). Branch `musafir-cafe`.
+
+### Build + lint (final, re-run)
+
+- `npm run build`: **PASS** (exit 0). "Compiled successfully in 25.2s", "Running TypeScript" passed, 34/34 static pages generated. Route table confirms `/musafir-cafe` static (○) and all four `ƒ /api/musafir-cafe/*` routes present (notes, notes/[id], notes/[id]/report, upload). The Notion `/books`,`/api/books`,`/manifest`,`/api/manifest` DYNAMIC_SERVER_USAGE messages and the Umami 404 are pre-existing runtime logs for unrelated routes emitted during static generation — not build failures; the build exited 0.
+- `npm run lint` (whole repo): exits 1 — **15 errors + 11 warnings**, ALL in PRE-EXISTING, untouched files: `app/(site)/guestbook/ui.tsx` (2 × react-hooks/set-state-in-effect), `app/ui/Navbar.tsx` (1), `app/ui/delight/AnimatedAvatar.tsx` (1), `app/api/guestbook/[id]/like/route.ts` (10 × no-explicit-any), `app/api/admin/guestbook/[id]/route.ts` (1 × no-explicit-any). Re-confirmed byte-identical to `origin/main`: `git diff --stat origin/main -- <those five files>` is EMPTY. ZERO errors/warnings originate in any Musafir Cafe file.
+- Targeted eslint over ALL Musafir Cafe files (`lib/notePlacement.ts`, `lib/profanity.ts`, `lib/promiseWallDb.ts`, `model/promiseNoteModel.ts`, `app/(site)/musafir-cafe/**`, `app/api/musafir-cafe/**`): **PASS** (exit 0, no errors, no warnings).
+
+### Placement / profanity sanity-check
+
+Already recorded above (FEAT-001 and FEAT-004 throwaway node runs: 23/23 PASS — rotatedAABB 0° identity + ~10% at 6°, noteBox height flag, coveredFraction exactly-40-cells PASS + three-disjoint-20% REJECTED, placeNote determinism, and profanity clean/dirty-whole-word/Scunthorpe/leetspeak/diacritic cases). No regression; placement + profanity code unchanged since those runs. No throwaway script re-created this pass.
+
+### Status
+
+All four FEAT files are status "completed". `task.json` status set to "completed". NO git commits made — all changes left in the working tree per instruction. Gates: `npm run build` PASS, feature files lint clean; whole-repo `npm run lint` red only on the pre-existing untouched baseline.
