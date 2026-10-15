@@ -87,7 +87,6 @@ interface ComposerProps {
  */
 export default function Composer({ defaultName, onClose, onPosted }: ComposerProps) {
   const { toast } = useToast()
-  const [mounted, setMounted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const dialogRef = useRef<HTMLDivElement | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -119,8 +118,6 @@ export default function Composer({ defaultName, onClose, onPosted }: ComposerPro
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }))
-
-  useEffect(() => setMounted(true), [])
 
   // Focus trap + Escape, restore focus on close.
   useEffect(() => {
@@ -295,7 +292,7 @@ export default function Composer({ defaultName, onClose, onPosted }: ComposerPro
     }
   }
 
-  if (!mounted) return null
+  if (typeof document === 'undefined') return null
 
   return createPortal(
     <div className="mz-modal-overlay" role="presentation">

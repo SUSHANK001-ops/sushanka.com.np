@@ -102,7 +102,7 @@ export default function NoteModal({ note, onClose, onDeleted, onLift }: NoteModa
     }
   }
 
-  if (!mounted) return null
+  if (typeof document === 'undefined') return null
 
   return createPortal(
     <div className="mz-modal-overlay" role="presentation">
