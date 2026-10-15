@@ -57,3 +57,34 @@ Files added:
 - sanitize-COPY: the guestbook's identical sanitize logic (strip `[\u0000-\u001f\u007f]`, collapse whitespace, trim) is reproduced inline in notes/route.ts; the guestbook's private function is never imported.
 - `if (!uid)` guard precedes rate-limit/create in POST and ownership compare in DELETE and report.
 - GET builds `PublicNote` explicitly (never spreads the raw doc), never returns `user_id`/`*_public_id`, includes boolean `mine`, and uses a true keyset on (created_at,_id) with malformed-cursor → first page.
+
+## FEAT-003 — Client experience (fonts, page, wall, components, CSS)
+
+Files added:
+- `app/(site)/musafir-cafe/fonts.ts` (Caveat/Kalam/Patrick_Hand/Reenie_Beanie via next/font/google, page-local `--mz-*` vars, `display:'swap'`)
+- `app/(site)/musafir-cafe/page.tsx` (server component: metadata, Google-provider detection, `.musafir-wall-root` wrapper with all four font variables, renders MusafirWall)
+- `app/(site)/musafir-cafe/MusafirWall.tsx` (`'use client'` orchestrator)
+- `app/(site)/musafir-cafe/components/{WallBackdrop,WallProps,StickyNote,LeaveNoteButton,RulesMailbox,DrawCanvas,Composer,NoteModal}.tsx`
+- `app/(site)/musafir-cafe/components/useMusafirSound.ts`
+- `app/(site)/musafir-cafe/musafir-cafe.css`
+
+### Build + lint gates
+
+- `npm run build`: PASS (exit 0). "Compiled successfully in 27.7s", "Running TypeScript" passed, 34/34 static pages generated. `/musafir-cafe` appears in the route table as a static page (○) and all four API routes remain dynamic (ƒ). The Notion/Umami fetch messages during static generation are pre-existing runtime logs for unrelated routes (`/books`, `/manifest`, `/api/*`), not build failures.
+  - NOTE: the first build attempt failed with "Failed to fetch `<font>` from Google Fonts" for EVERY next/font/google face — including the pre-existing root-layout fonts (Caveat/Fraunces/Geist/JetBrains/Noto), not just the new ones. This was a transient outbound-network failure to fonts.googleapis.com at build time (next/font/google self-hosts by downloading at build). Connectivity recovered (HTTP 200 to the css2 endpoint) and the immediate re-run compiled cleanly. The approach (next/font/google, CSP-safe per context) is unchanged and correct.
+- Targeted eslint over all new `app/(site)/musafir-cafe/**/*.{ts,tsx}` files: PASS (exit 0, no warnings/errors). Every plain `<img>` (StickyNote photo+drawing, NoteModal photo+drawing, Composer photo preview) carries `// eslint-disable-next-line @next/next/no-img-element`.
+- `npm run lint` (whole repo): still 15 PRE-EXISTING errors in untouched files only (guestbook/ui.tsx, Navbar.tsx, delight/AnimatedAvatar.tsx, api/guestbook/[id]/like/route.ts, api/admin/guestbook/[id]/route.ts); zero in FEAT-003 files. FEAT-003 introduces zero new lint errors.
+  - To stay clean under the repo's `react-hooks/set-state-in-effect` rule, the portaled modals/composer use a `typeof document !== 'undefined'` SSR guard instead of the guestbook's `useEffect(() => setMounted(true))` pattern (that pattern is itself one of the pre-existing lint errors in ui.tsx).
+
+### Baked-in design decisions verified in code
+
+- MEDIUM fix 2: `StickyNote` applies `.mz-note--photo` (taller box) under EXACTLY `note.photo_url != null`; CSS binds `.mz-note--photo { height: 210px }` so render height equals placement height.
+- MEDIUM fix 4: `MusafirWall` renders the desktop canvas at logical `H_WALL_HEIGHT=900` scaled to the viewport (`scale = clientHeight / H_WALL_HEIGHT`), mirroring the mobile whole-canvas scale (`clientWidth / V_WALL_WIDTH`), never raw 100vh.
+- NIT #8: Composer submit uploads any pending drawing/photo FIRST and POSTs only the Cloudinary `drawing_url`/`photo_url` (+ public ids); the local `*DataUrl` previews are never sent.
+- Fonts via next/font/google only — no Google Fonts `<link>`/`@import`.
+- Note text renders as plain `<p>{text}</p>` (StickyNote, NoteModal) — never dangerouslySetInnerHTML.
+- Layout reads `pos_x/pos_y` on desktop (`matchMedia('(min-width:1024px)')`) and `pos_x_v/pos_y_v` on mobile; positions are never recomputed client-side.
+- Viewport-rect cull (rAF-throttled, one-screen overscan) drives which notes AND prop clusters mount; visible notes are sorted by the `(z_index, created_at, _id)` comparator ascending before mapping, keyed by note id.
+- Sound: `useMusafirSound` gates `useSound` by `useSoundFx().enabled && !pageMuted`; absent paper-lift.mp3/paper-stick.mp3 → no sound, no crash (play wrapped in try/catch and gated).
+- One `@media (prefers-reduced-motion: reduce)` block disables the first-load sweep, fairy-light twinkle, hover/tap lift+rotate, slap bounce, and new-note glow (static highlight) while keeping scroll/drag.
+- All CSS nested under `.musafir-wall-root`; `--mz-note-w/--mz-note-h` bound to the logical constants (photo 210); `overflow-wrap: anywhere` on note text.
