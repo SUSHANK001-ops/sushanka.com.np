@@ -88,3 +88,40 @@ Files added:
 - Sound: `useMusafirSound` gates `useSound` by `useSoundFx().enabled && !pageMuted`; absent paper-lift.mp3/paper-stick.mp3 → no sound, no crash (play wrapped in try/catch and gated).
 - One `@media (prefers-reduced-motion: reduce)` block disables the first-load sweep, fairy-light twinkle, hover/tap lift+rotate, slap bounce, and new-note glow (static highlight) while keeping scroll/drag.
 - All CSS nested under `.musafir-wall-root`; `--mz-note-w/--mz-note-h` bound to the logical constants (photo 210); `overflow-wrap: anywhere` on note text.
+
+## FEAT-004 — Environment, setup docs, and final verification gates
+
+Deliverables:
+- `.env.example`: appended a "Musafir Cafe Promise Wall" section documenting `PROMISE_WALL_DB_URL` (append-only; existing values untouched). The entry states it must be a SEPARATE database from `MONGODB_URI` (may share a cluster, distinct DB/URL) and notes the Mongoose schema's declared indexes build automatically on first connect (no migration files). NOTE: `.env.example` matches the repo's `.env*` gitignore pattern, so the change is present on disk (verified: section header at line 72, `PROMISE_WALL_DB_URL` at line 80) but does not appear in `git status`.
+- `app/(site)/musafir-cafe/SETUP.md`: documents the env var (`PROMISE_WALL_DB_URL`, separate isolated DB), the indexes-are-the-migration note (`created_at`, `status`, `(pos_x, pos_y)` built on first connect — no migration-file system), Cloudinary reuse (`lib/cloudinary.ts`, folder `musafir-cafe`), and the API endpoint groups (GET/POST `/api/musafir-cafe/notes`, DELETE `/api/musafir-cafe/notes/:id`, POST `/api/musafir-cafe/notes/:id/report`, POST `/api/musafir-cafe/upload`). This file was already present in the working tree (committed in the prior FEAT-003 commit); the write reproduced byte-identical content (no working-tree diff vs HEAD).
+
+### Throwaway node sanity-check (tmp-feat004-check.mjs — created, run, deleted)
+
+Ran under Node v24.19.0 (native TypeScript import of `lib/notePlacement.ts` and `lib/profanity.ts`). 23/23 checks PASSED:
+
+notePlacement.ts:
+- PASS: `rotatedAABB(160,160,0)` is identity (w=160, h=160).
+- PASS: `rotatedAABB(160,160,6)` grows ~10% (measured 9.91%).
+- PASS: `noteBox(false).h === NOTE_H (160)`; `noteBox(true).h === PHOTO_NOTE_H (210)`.
+- PASS: `coveredFraction` with EXACTLY 40 covered cells returns 0.40 and is NOT rejected (boundary `<= 0.40` passes).
+- PASS: a 45-wide higher-z cover yields 0.50 (> 0.40, rejected region).
+- PASS: THREE DISJOINT 20% overlaps cumulatively cover 0.60 and are correctly REJECTED by the cumulative-visibility rule (> 0.40) — proving the cumulative check is independent of the per-note 35% cap.
+- PASS: `placeNote` is deterministic for identical `(existing, wall, orientation, seed)` inputs (position, rotation, and grown wall all match across two runs).
+
+profanity.ts:
+- PASS: `isClean(null)`, `isClean("")`, `isClean("   ")` all return `true`.
+- PASS: clean strings pass — `isClean("hello world")` true.
+- PASS: dirty WHOLE words blocked — `isClean("fuck")` and `isClean("You are a bitch")` false.
+- PASS: Scunthorpe-type substrings NOT flagged — `isClean("scunthorpe")`, `isClean("class assassin")`, `isClean("Penistone")` all true.
+- PASS: leetspeak/diacritic variants flagged — `sh1t` (1->i), `$hit` ($->s), `@sshole` (@->a), and a diacritic form all return false.
+
+Script deleted after the run (removed from the working tree; shows as `D tmp-feat004-check.mjs` because the prior FEAT-003 commit had accidentally committed it — the deletion is left unstaged per the NO-commits rule).
+
+### Build + lint gates (final)
+
+- `npm run build`: PASS (exit 0). "Compiled successfully in 30.2s", "Running TypeScript" passed, 34/34 static pages generated. `/musafir-cafe` is a static route (○); all four `/api/musafir-cafe/*` routes are dynamic (ƒ) in the route table. The Notion/Umami fetch messages and the `/` 60s static-generation retry during build are pre-existing runtime/outbound-network logs for unrelated routes, not build failures; the build still exited 0.
+- `npm run lint` (whole repo): FAILS with exit 1 — 15 errors, 11 warnings. ALL 15 errors are in PRE-EXISTING, untouched files: `app/(site)/guestbook/ui.tsx` (2 × react-hooks/set-state-in-effect), `app/ui/Navbar.tsx` (1), `app/ui/delight/AnimatedAvatar.tsx` (1), `app/api/guestbook/[id]/like/route.ts` (10 × no-explicit-any), `app/api/admin/guestbook/[id]/route.ts` (1 × no-explicit-any). ZERO errors originate in any Musafir Cafe feature file (lib/*, model/*, app/(site)/musafir-cafe/**, app/api/musafir-cafe/**). This is the same baseline recorded for FEAT-001/002/003; FEAT-004 introduces no new lint errors and touches none of the failing files. Fixing these pre-existing errors is out of scope for the Musafir Cafe feature (they live in guestbook/admin/navbar code).
+
+### Git state
+
+Working tree changed, NO new commits made by FEAT-004. `git status` shows `D tmp-feat004-check.mjs` (the throwaway deletion). `.env.example` edits are on disk but hidden from `git status` by the `.env*` gitignore rule. SETUP.md and verification.md's FEAT-003 content were already committed by the prior FEAT-003 commit; this step's verification.md append is a new unstaged change under `.agents/`.
