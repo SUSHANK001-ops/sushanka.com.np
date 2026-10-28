@@ -1,4 +1,5 @@
 import React from 'react'
+import Image from 'next/image'
 import { ArrowUpRight, Github } from 'lucide-react'
 import type { Project } from '@/data/config'
 
@@ -9,6 +10,17 @@ import type { Project } from '@/data/config'
 const ProjectCard = ({ project }: { project: Project }) => {
   return (
     <article className="ed-card">
+      {project.image && (
+        <div className="relative mb-4 aspect-[16/9] w-full overflow-hidden rounded-lg border border-border bg-surface">
+          <Image
+            src={project.image}
+            alt={`${project.title} preview`}
+            fill
+            sizes="(max-width: 768px) 100vw, 640px"
+            className="object-cover transition-transform duration-300 hover:scale-[1.02]"
+          />
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <span className="font-mono text-xs text-muted">{project.number}</span>

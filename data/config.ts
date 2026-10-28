@@ -210,21 +210,43 @@ export const projects: Project[] = [
     title: 'Zomato Clone — DevSecOps CI/CD Pipeline',
     tagline: 'End-to-end DevSecOps pipeline deploying a React app on AWS EC2.',
     description:
-      'An enterprise-ready DevSecOps CI/CD pipeline that securely builds, analyzes, scans, containerizes, and deploys a Zomato Clone React app on AWS EC2. Jenkins declarative pipeline runs SonarQube SAST and quality gate, Trivy filesystem and image vulnerability scans, a multi-stage Docker build (Node 20 → Nginx Alpine), a push to Docker Hub, and automated container deployment on port 3000.',
+      'An enterprise-ready DevSecOps CI/CD pipeline that securely builds, analyzes, scans, containerizes, and deploys a Zomato Clone React app on AWS EC2. Jenkins runs SonarQube analysis and quality gates, Trivy filesystem and image scans, a multi-stage Docker build, Docker Hub publishing, and automated deployment through Nginx.',
     builtWith: ['Jenkins', 'Docker', 'SonarQube', 'Trivy', 'Nginx', 'AWS EC2'],
     githubUrl: 'https://github.com/SUSHANK001-ops/Devops_Projects/tree/main/Project-1',
+    image: '/projects/zomato-devsecops.png',
   },
   {
     number: '02',
+    title: 'Netflix Clone — DevSecOps CI/CD Pipeline',
+    tagline: 'Secure Jenkins pipeline with scanning, monitoring, and Docker delivery.',
+    description:
+      'A reproducible DevSecOps workflow that builds and ships a Netflix clone on AWS EC2. Jenkins orchestrates SonarQube code analysis, Trivy filesystem and container scans, Docker Hub publishing, deployment on port 8081, email reports, and optional Prometheus and Grafana monitoring.',
+    builtWith: ['Jenkins', 'Docker', 'SonarQube', 'Trivy', 'Prometheus', 'Grafana', 'AWS EC2'],
+    githubUrl: 'https://github.com/SUSHANK001-ops/Devops_Projects/tree/main/Project-2',
+    image: '/projects/netflix-devsecops.png',
+  },
+  {
+    number: '03',
+    title: 'Three-Tier Application on AWS EKS',
+    tagline: 'React, Flask, and PostgreSQL deployed on Kubernetes with RDS and an ALB.',
+    description:
+      'A complete three-tier DevOps Learning Platform deployed on Amazon EKS. The React frontend and Flask API run as Kubernetes workloads, PostgreSQL runs privately on Amazon RDS, and the AWS Load Balancer Controller provisions an internet-facing ALB with path-based routing. The project includes Kubernetes manifests, Terraform infrastructure, migration jobs, secrets, autoscaling, and teardown guidance.',
+    builtWith: ['AWS EKS', 'Kubernetes', 'Amazon RDS', 'AWS ALB', 'React', 'Flask', 'PostgreSQL'],
+    githubUrl: 'https://github.com/SUSHANK001-ops/Devops_Projects/tree/main/DevOps-Project-3',
+    image: '/projects/eks-three-tier.png',
+  },
+  {
+    number: '04',
     title: 'SenChat',
     tagline: 'Real-time chat with instant messaging and auth.',
     description:
       'A real-time chatting application with instant messaging, user authentication, and a sleek conversational UI. Built as a full-stack project with modern web technologies.',
     builtWith: ['MERN Stack', 'Socket.io', 'Real-time', 'Authentication'],
     liveUrl: 'https://senchat.sushanka.com.np',
+    image: '/projects/senchat.png',
   },
   {
-    number: '03',
+    number: '05',
     title: 'UrlShare',
     tagline: 'File sharing with QR links and auto-expiry.',
     description:
@@ -232,24 +254,27 @@ export const projects: Project[] = [
     builtWith: ['Next.js', 'Express', 'PostgreSQL', 'Cloudinary'],
     liveUrl: 'https://urlshare.sushanka.com.np',
     githubUrl: 'https://github.com/SUSHANK001-ops/UrlShare.git',
+    image: '/projects/urlshare.png',
   },
   {
-    number: '04',
+    number: '06',
     title: 'SenBlog',
     tagline: 'Full-stack blogging platform with rich editing.',
     description:
       'A full-stack blogging platform with rich text editing, user dashboards, and content management. Features responsive design, authentication, and a clean reading experience.',
     builtWith: ['MongoDB', 'Express', 'React', 'Node.js'],
     liveUrl: 'https://senblog.vercel.app/',
+    image: '/projects/senblog.png',
   },
   {
-    number: '05',
+    number: '07',
     title: 'SenTools',
     description:
       'A comprehensive utility toolkit web app with multiple developer and productivity tools built into a single platform. Clean UI with intuitive navigation.',
     builtWith: ['Next.js', 'JavaScript', 'Tailwind CSS'],
     liveUrl: 'https://sentools.vercel.app/',
     githubUrl: 'https://github.com/SUSHANK001-ops/SenTOols.git',
+    image: '/projects/sentools.png',
   },
 ]
 
